@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <script src="demo-api.js"></script>
+  <script src="demo-shim.js"></script>
+  <meta charset="UTF-8">
+  <script src="js/theme-boot.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SES - SADEN ERP SYSTEM (نسخة عرض)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Aref+Ruqaa:wght@400;700&family=Caveat:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#8b1a1a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <!-- أيقونة الموقع = نفس أيقونة تطبيق الموبايل SES -->
+  <link rel="icon" type="image/png" sizes="64x64" href="favicon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="app-icon-192.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app"><div class="boot">جاري التحميل...</div></div>
+  <div id="toast"></div>
+  <script src="js/i18n-dict.js"></script>
+  <script src="js/i18n-dict-2.js"></script>
+  <script src="js/i18n-more.js"></script>
+  <script src="js/i18n-more-2.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/plates.js"></script>
+  <script src="js/routes.js"></script>
+  <script src="js/form-traits.js"></script>
+  <script src="js/forms-traffic.js"></script>
+  <script src="js/forms.js"></script>
+  <script src="js/policy.js"></script>
+  <script src="js/plan-words.js"></script>
+  <script src="js/plan.js"></script>
+  <script src="js/ion.js"></script>
+  <!-- صفحات النظام: كل صفحة في ملف (public/js/pages)، وتُحمَّل قبل app.js -->
+  <script src="js/pages/about.js"></script>
+  <script src="js/pages/access-requests.js"></script>
+  <script src="js/pages/account.js"></script>
+  <script src="js/pages/adv-ledger.js"></script>
+  <script src="js/pages/advances.js"></script>
+  <script src="js/pages/analysis.js"></script>
+  <script src="js/pages/apps.js"></script>
+  <script src="js/pages/attendance.js"></script>
+  <script src="js/pages/branch-map.js"></script>
+  <script src="js/pages/calendar.js"></script>
+  <script src="js/pages/chat.js"></script>
+  <script src="js/pages/chat-kit.js"></script>
+  <script src="js/pages/chat-media-kit.js"></script>
+  <script src="js/pages/companies.js"></script>
+  <script src="js/pages/group.js"></script>
+  <script src="js/pages/pay-totals.js"></script>
+  <script src="js/pages/contacts.js"></script>
+  <script src="js/pages/contracts.js"></script>
+  <script src="js/pages/crm.js"></script>
+  <script src="js/pages/dashboard.js"></script>
+  <script src="js/pages/decisions.js"></script>
+  <script src="js/pages/dept-report.js"></script>
+  <script src="js/pages/documents.js"></script>
+  <script src="js/pages/documents-kit.js"></script>
+  <script src="js/pages/drilling.js"></script>
+  <script src="js/pages/drilling-kit.js"></script>
+  <script src="js/pages/emp-affairs.js"></script>
+  <script src="js/pages/employee-file.js"></script>
+  <script src="js/pages/employee-file-kit-2.js"></script>
+  <script src="js/pages/employee-file-kit.js"></script>
+  <script src="js/pages/employees.js"></script>
+  <script src="js/pages/ended-employees.js"></script>
+  <script src="js/pages/executive.js"></script>
+  <script src="js/pages/facilities.js"></script>
+  <script src="js/pages/templates-center.js"></script>
+  <script src="js/pages/inventory-kit.js"></script>
+  <script src="js/pages/fleet-handovers.js"></script>
+  <script src="js/pages/fleet-kit.js"></script>
+  <script src="js/pages/fleet-list.js"></script>
+  <script src="js/pages/fleet.js"></script>
+  <script src="js/pages/form-builder.js"></script>
+  <script src="js/pages/fuel.js"></script>
+  <script src="js/pages/gosi.js"></script>
+  <script src="js/pages/governance.js"></script>
+  <script src="js/pages/home.js"></script>
+  <script src="js/pages/hse.js"></script>
+  <script src="js/pages/inventory.js"></script>
+  <script src="js/pages/investigations.js"></script>
+  <script src="js/pages/knowledge.js"></script>
+  <script src="js/pages/kpi.js"></script>
+  <script src="js/pages/legal-cases.js"></script>
+  <script src="js/pages/login.js"></script>
+  <script src="js/pages/mail.js"></script>
+  <script src="js/pages/mail-kit.js"></script>
+  <script src="js/pages/mudad.js"></script>
+  <script src="js/pages/my-profile.js"></script>
+  <script src="js/pages/new-request.js"></script>
+  <script src="js/pages/notes.js"></script>
+  <script src="js/pages/notifications.js"></script>
+  <script src="js/pages/org-chart.js"></script>
+  <script src="js/pages/overtime.js"></script>
+  <script src="js/pages/pay-funding.js"></script>
+  <script src="js/pages/pay-funding-kit.js"></script>
+  <script src="js/pages/pay-funding-kit-3.js"></script>
+  <script src="js/pages/pay-funding-kit-2.js"></script>
+  <script src="js/pages/payroll.js"></script>
+  <script src="js/pages/policy.js"></script>
+  <script src="js/pages/print.js"></script>
+  <script src="js/pages/punch.js"></script>
+  <script src="js/pages/reports.js"></script>
+  <script src="js/pages/request-details.js"></script>
+  <script src="js/pages/request-details-kit-2.js"></script>
+  <script src="js/pages/request-details-kit.js"></script>
+  <script src="js/pages/request-editor.js"></script>
+  <script src="js/pages/request-editor-kit.js"></script>
+  <script src="js/pages/requests-list.js"></script>
+  <script src="js/pages/settings.js"></script>
+  <script src="js/pages/settings-kit.js"></script>
+  <script src="js/pages/settings-kit-2.js"></script>
+  <script src="js/pages/settings-kit-3.js"></script>
+  <script src="js/pages/settings-kit-4.js"></script>
+  <script src="js/pages/settlement.js"></script>
+  <script src="js/pages/stock.js"></script>
+  <script src="js/pages/supervision.js"></script>
+  <script src="js/pages/tasks.js"></script>
+  <script src="js/pages/todo.js"></script>
+  <script src="js/pages/tools.js"></script>
+  <script src="js/pages/training.js"></script>
+  <script src="js/pages/trash.js"></script>
+  <script src="js/pages/violations.js"></script>
+  <script src="js/pages/workshop.js"></script>
+  <script src="js/guide-data.js"></script>
+  <script src="js/guide-en.js"></script>
+  <script src="js/guide-more.js"></script>
+  <script src="js/dom-hooks.js"></script>
+  <script src="js/app/pages.js"></script>
+  <script src="js/app/api.js"></script>
+  <script src="js/app/nav.js"></script>
+  <script src="js/app/shell.js"></script>
+  <script src="js/app/notify.js"></script>
+  <script src="js/app/login-editor.js"></script>
+  <script src="js/app/sticky-notes.js"></script>
+  <script src="js/app/xlsx-ops.js"></script>
+  <script src="js/app/assistant-kb.js"></script>
+  <script src="js/app/assistant.js"></script>
+  <script src="js/app/chat.js"></script>
+  <script src="js/app/hr-org.js"></script>
+  <script src="js/app/hr-misc.js"></script>
+  <script src="js/app/field-ops.js"></script>
+  <script src="js/app/analysis-tools.js"></script>
+  <script src="js/app/map-print.js"></script>
+  <script src="js/app/depts.js"></script>
+  <script src="js/app/settings.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
