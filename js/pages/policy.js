@@ -8,7 +8,9 @@ window.SES_PAGES['policy'] = function (S) {
     $$,
     GUIDE,
     GUIDE_CATS,
+    GUIDE_DYN,
     GUIDE_EN,
+    GUIDE_UR,
     GUIDE_META,
     POLICY,
     SF,
@@ -151,13 +153,24 @@ window.SES_PAGES['policy'] = function (S) {
     if (multiCo()) ['#/group', '#/companies'].forEach((h) => titles.set(h, h === '#/group' ? 'إدارة المجموعة' : 'شركات المجموعة'));
     return titles;
   }
-  /* أقسام المستخدم بترتيبها: الجديد والبداية أولاً ثم حسب التصنيف (والنص الإنجليزي عند اختياره) */
-  function guideSections(u, pages, en) {
+  /* قسم مترجم [الأيقونة، العنوان، النص، live]: النص جاهز، أو عبارات قالب يُبنى من بيانات النظام (GUIDE_DYN).
+   * done: نصه بلغة العرض فلا يمر على مترجم الواجهة، و live: داخله جزء يملؤه النظام بالعربية فيُترجم */
+  function guideInLang(g, [ic, title, body, live]) {
+    const x = { SF, esc, tr: I18N.tr, today: S.today, tools: S.AN_TOOLS, chain: S.AN_CHAIN };
+    return { ...g, ic, title, body: typeof body === 'string' ? body : GUIDE_DYN[g.id](body, x), done: true, live: !!live };
+  }
+  const NOI = ' data-noi18n';
+  const guideNoi = (g) => (g.done ? NOI : '');
+  /* أقسام المستخدم بترتيبها: الجديد والبداية أولاً ثم حسب التصنيف، بنص اللغة المختارة.
+   * القسم الذي لا ترجمة له يبقى نصه بالعربية كما هو (raw) بدل ترجمة كلماته متفرقة */
+  function guideSections(u, pages, lang) {
+    const tr = { en: GUIDE_EN, ur: GUIDE_UR }[lang];
+    const inLang = (g) => (!tr ? g : tr[g.id] ? guideInLang(g, tr[g.id]) : { ...g, raw: true });
     const visible = (g) => g.who(u) && (g.id !== 'admin' || u.role === 'admin') && (!g.pages || g.pages.some((h) => pages.has(h)));
     const order = GUIDE_CATS.map(([k]) => k);
     const top = (g) => (g.id === 'news' ? 0 : g.id === 'start' ? 1 : 2);
     return GUIDE.filter(visible)
-      .map((g) => (en && GUIDE_EN[g.id] ? { ...g, ic: GUIDE_EN[g.id][0], title: GUIDE_EN[g.id][1], body: GUIDE_EN[g.id][2] } : g))
+      .map(inLang)
       .sort((x, y) => top(x) - top(y) || order.indexOf(guideMeta(x)[0]) - order.indexOf(guideMeta(y)[0]));
   }
   const usedCats = (list) => GUIDE_CATS.filter(([k]) => list.some((g) => guideMeta(g)[0] === k));
@@ -183,8 +196,8 @@ window.SES_PAGES['policy'] = function (S) {
     const [cat, ic, c] = guideMeta(g);
     const plain = normAr(`${g.title} ${String(g.body).replace(/<[^>]+>/g, ' ')}`);
     return `<section class="gx-sec" id="g-${g.id}" data-cat="${cat}" data-s="${esc(plain)}" style="--c:${c}">
-      <div class="gx-sec-h"><span class="gx-ic">${icon(ic)}</span><div><small>${esc((GUIDE_CATS.find(([k]) => k === cat) || [])[1] || '')}</small><h2>${esc(g.title)}</h2></div></div>
-      <div class="gx-sec-b">${g.body}</div>${guideShotsHtml(g, man, pages)}</section>`;
+      <div class="gx-sec-h"><span class="gx-ic">${icon(ic)}</span><div><small>${esc((GUIDE_CATS.find(([k]) => k === cat) || [])[1] || '')}</small><h2${guideNoi(g)}>${esc(g.title)}</h2></div></div>
+      <div class="gx-sec-b"${g.raw ? `${NOI} lang="ar" dir="rtl"` : g.live ? '' : guideNoi(g)}>${g.body}</div>${guideShotsHtml(g, man, pages)}</section>`;
   }
   function guideHeadHtml(list, man) {
     const at = man.at ? `<span>${icon('calendar')} صور الشاشات محدّثة في ${esc(SF.fmtDate(man.at.slice(0, 10)))}</span>` : '';
@@ -198,7 +211,7 @@ window.SES_PAGES['policy'] = function (S) {
     const tiles = list
       .map(
         (g) =>
-          `<a href="javascript:void 0" class="gx-tile" data-gjump="${g.id}" data-cat="${guideMeta(g)[0]}" style="--c:${guideMeta(g)[2]}"><span class="gx-ic">${icon(guideMeta(g)[1])}</span><b>${esc(g.title)}</b></a>`,
+          `<a href="javascript:void 0" class="gx-tile" data-gjump="${g.id}" data-cat="${guideMeta(g)[0]}" style="--c:${guideMeta(g)[2]}"><span class="gx-ic">${icon(guideMeta(g)[1])}</span><b${guideNoi(g)}>${esc(g.title)}</b></a>`,
       )
       .join('');
     const toc = usedCats(list)
@@ -208,7 +221,7 @@ window.SES_PAGES['policy'] = function (S) {
             .filter((g) => guideMeta(g)[0] === k)
             .map(
               (g) =>
-                `<a href="javascript:void 0" data-gjump="${g.id}" data-toc="${g.id}" style="--c:${guideMeta(g)[2]}">${esc(g.title)}</a>`,
+                `<a href="javascript:void 0" data-gjump="${g.id}" data-toc="${g.id}" style="--c:${guideMeta(g)[2]}"${guideNoi(g)}>${esc(g.title)}</a>`,
             )
             .join('')}</div>`,
       )
@@ -230,7 +243,7 @@ window.SES_PAGES['policy'] = function (S) {
     const main = shell('<div class="empty">جاري التحميل...</div>', '#/guide');
     const man = await loadGuideShots();
     const pages = guidePages();
-    const list = guideSections(u, pages, window.I18N && I18N.lang === 'en');
+    const list = guideSections(u, pages, window.I18N && I18N.lang);
     const { tiles, toc } = guideNavHtml(list);
     main.innerHTML = `<div class="gx">${guideHeadHtml(list, man)}
       <div class="gx-grid">${tiles}</div>

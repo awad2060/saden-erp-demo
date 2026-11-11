@@ -170,10 +170,14 @@ window.SES_PAGE_KITS['settings-2'] = function (S, ctx) {
       <div class="grid2">
         <div class="field"><label>الاسم الكامل<span class="req">*</span></label><input class="in" name="name" value="${esc(u ? u.name : '')}"></div>
         <div class="field"><label>اسم المستخدم (إنجليزي)<span class="req">*</span></label><input class="in" name="username" dir="ltr" value="${esc(u ? u.username : '')}" ${u ? 'disabled' : ''}></div>
-        <div class="field"><label>المسمى<span class="req">*</span></label><select class="in" name="role">${(state.config.roles || [])
-          .filter((x) => isAdmin() || x.base !== 'admin')
+        <div class="field"><label>الفئة<span class="req">*</span></label><select class="in" name="role">${(state.config.roles || [])
+          .filter(
+            (x) =>
+              (isAdmin() || x.base !== 'admin') &&
+              (SF.CATEGORIES.some((c) => c.id === x.id) || x.id === 'r_employee' || (u && u.roleId === x.id)),
+          )
           .map((x) => `<option value="${x.id}"${u && u.roleId === x.id ? ' selected' : ''}>${esc(x.name)}</option>`)
-          .join('')}</select><div class="hint">تحدد ما يفعله كل مسمى من "المسميات والصلاحيات"</div></div>
+          .join('')}</select><div class="hint">صلاحيات كل فئة من كارتها في «المستخدمون»</div></div>
         <div class="field"><label>التصنيف<span class="req">*</span></label><select class="in" name="unit" required><option value="">— اختر —</option>${['فرع', 'إدارة / قسم'].map((x) => `<option${(u ? u.unit : '') === x ? ' selected' : ''}>${x}</option>`).join('')}</select><div class="hint">مكانه في قائمة المستخدمين: تحت الفروع أو تحت الإدارات والأقسام (لا يغيّر الصلاحيات)</div></div>
         <div class="field" id="deptBox"><label>الإدارة / القسم في القائمة</label><input class="in" name="dept" list="dl-ub" value="${esc(userModalValue7(u))}" placeholder="افتراضياً: الفرع"><div class="hint">اسم الإدارة التي يظهر تحتها في "الإدارات والأقسام" — للتنظيم فقط</div></div>
         <div class="field" id="subBox"><label>تفريع تحته (اختياري)</label><input class="in" name="sub" value="${esc(userModalValue8(u))}" placeholder="مثال: شئون الموظفين"><div class="hint">قسم فرعي داخل الإدارة (مثل الإدارة ← شئون الموظفين، الشئون القانونية)</div></div>
@@ -229,18 +233,41 @@ window.SES_PAGE_KITS['settings-2'] = function (S, ctx) {
       ? `<div class="field"><label>الجوال المربوط (تطبيق SES)</label>${u.mobileDevice ? `<div class="row" style="gap:8px;align-items:center"><span>📱 ${esc(u.mobileDevice.model || 'جوال')} — منذ ${esc(dt(u.mobileDevice.at))}</span><button type="button" class="btn sm bad" id="uMobUnbind">إلغاء الربط</button></div><div class="hint">عند تغيير الموظف لجواله: ألغِ الربط، فيُربط أول جوال يدخل منه بعدها (ويُلغى ربط البصمة أيضاً).</div>` : '<div class="muted">لا يوجد جوال مربوط</div>'}</div>`
       : '';
   }
+  /* «ما يظهر لهذا المستخدم» شاشة كاملة: نفس العلامات (لا نسخة منها)، و«حفظ» يحفظ صفحة المستخدم كلها */
+  function wirePermFull(bg, form) {
+    const box = $('.perm-box', bg);
+    const full = (on) => {
+      box.classList.toggle('perm-full', on);
+      document.body.classList.toggle('perm-full-on', on);
+      if (on) {
+        box.open = true;
+        box.scrollTop = 0;
+      }
+    };
+    $('[data-permfull]', box).onclick = () => full(true);
+    $('[data-permdone]', box).onclick = () => full(false);
+    $('[data-permsave]', box).onclick = () => {
+      full(false);
+      form.requestSubmit();
+    };
+    document.addEventListener('keydown', function esc(e) {
+      if (!document.body.contains(box)) return document.removeEventListener('keydown', esc);
+      if (e.key === 'Escape' && box.classList.contains('perm-full')) full(false);
+    });
+  }
   /* جزء من userModal: isAdmin()… */
   function userModalValue2(host, pageList, u) {
     return isAdmin()
       ? `<details class="perm-box${host ? ' card' : ''}"${host || (u && (Object.keys(u.pages || {}).length || Array.isArray(u.allowedForms))) ? ' open' : ''}>
         <summary>ما يظهر لهذا المستخدم</summary>
+        <div class="perm-fullbar"><b class="pf-title">تخصيص ما يظهر لـ ${esc(u ? u.name : 'هذا المستخدم')}</b><span class="pf-acts"><button type="button" class="btn" data-permfull>${icon('grid')} عرض الأيقونات وتخصيصها (شاشة كاملة)</button><button type="button" class="btn ghost" data-permdone>→ رجوع</button><button type="button" class="btn primary" data-permsave>💾 حفظ</button></span></div>
         <div class="hint" style="margin:6px 0 10px">كل ما يظهر في حساب مدير النظام. العلامة تعني أنه يظهر لهذا المستخدم. العلامات الأولى حسب مسماه، وتتغير تلقائياً عند تغيير الفئة أو الصلاحية. "حسابي" يظهر دائماً.</div>
         <div class="perm-cols">
-          <div><b>الصفحات</b> <button type="button" class="btn sm ghost" data-pagesdef>الافتراضي</button>
-            ${pageList.map(([k, l]) => `<label class="check"><input type="checkbox" data-page="${esc(k)}"${SF.canSee(u || { role: 'accountant' }, k) ? ' checked' : ''}> ${esc(l)}<small class="muted" data-defmark="${esc(k)}"></small></label>`).join('')}
-            <b style="display:block;margin-top:14px">أيقونات التطبيقات وما تحتها</b>
+          <div class="pu-main"><div class="pu-icons"><b style="display:block">أيقونات التطبيقات وما تحتها</b>
             <div class="hint" style="margin:2px 0 6px">شِل العلامة لإخفاء الأيقونة أو جزء منها عن هذا المستخدم. الأيقونة تظهر فقط إذا كانت صلاحياته تسمح بها أصلاً.</div>
-            <div class="nav-tree" id="uNavTree">${navTree((k, l, ic, d, g) => `<label class="check nt-r${g ? ' nt-h' : ''}" style="--d:${d}"><input type="checkbox" data-page="${esc(k)}"${SF.canSee(u || { role: 'accountant' }, k) ? ' checked' : ''}><span class="nt-ic">${ic}</span> ${esc(l)}<small class="muted" data-defmark="${esc(k)}"></small></label>`)}</div>
+            <div class="nav-tree" id="uNavTree">${navTree((k, l, ic, d, g) => `<label class="check nt-r${g ? ' nt-h' : ''}" style="--d:${d}"><input type="checkbox" data-page="${esc(k)}"${SF.canSee(u || { role: 'accountant' }, k) ? ' checked' : ''}><span class="nt-ic">${ic}</span> ${esc(l)}<small class="muted" data-defmark="${esc(k)}"></small></label>`)}</div></div>
+            <div class="pu-pages"><b style="display:block;margin-top:14px">الصفحات</b> <button type="button" class="btn sm ghost" data-pagesdef>الافتراضي</button>
+            <div class="pu-list">${pageList.map(([k, l]) => `<label class="check"><input type="checkbox" data-page="${esc(k)}"${SF.canSee(u || { role: 'accountant' }, k) ? ' checked' : ''}> ${esc(l)}<small class="muted" data-defmark="${esc(k)}"></small></label>`).join('')}</div></div>
           </div>
           <div><b>أقسام لوحة المؤشرات</b> <button type="button" class="btn sm ghost" data-dashdef>حسب المسمى</button>
             <div class="hint" style="margin:2px 0 6px">تظهر إذا كانت "لوحة المؤشرات" ضمن صفحاته</div>
@@ -358,6 +385,7 @@ window.SES_PAGE_KITS['settings-2'] = function (S, ctx) {
         });
       $('[data-pagesdef]', bg).onclick = resetPages;
       navTreeWire($('#uNavTree', bg), (r) => $('input', r).checked);
+      wirePermFull(bg, form);
       $$('[data-page]', bg).forEach((c) => {
         c.onchange = markDefaults;
       });

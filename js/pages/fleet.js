@@ -11,7 +11,6 @@ window.SES_PAGES['fleet'] = function (S) {
     askYesNo,
     can,
     collect,
-    downloadXlsx,
     esc,
     fieldHtml,
     fitLetters,
@@ -27,7 +26,7 @@ window.SES_PAGES['fleet'] = function (S) {
   } = S;
   /* أدوات الأسطول المشتركة (fleet-kit.js)، وصفحة القائمة بتبويباتها (fleet-list.js) */
   const kit = window.SES_FLEET.kit(S);
-  const { FLEET_FIELDS, BULK_COLS, BULK_SAMPLE, docBadge, maintState, ownerOf, whoOf } = kit;
+  const { FLEET_FIELDS, BULK_COLS, docBadge, maintState, ownerOf, whoOf } = kit;
   function vehicleModal(v, done) {
     const bg = document.createElement('div');
     bg.className = 'modal-bg';
@@ -151,7 +150,7 @@ window.SES_PAGES['fleet'] = function (S) {
   };
   const bindFile = (m) => {
     const { bg, body, cols } = m;
-    $('#bkTpl', bg).onclick = () => downloadXlsx(window.SES_FLEET.vehiclesFile(), [cols.map((f) => f.label), BULK_SAMPLE()], 'المركبات');
+    $('#bkTpl', bg).onclick = () => window.SES_TEMPLATES.download(S, window.SES_FLEET.vehiclesTemplate());
     $('#bkFile', bg).onchange = async (e) => {
       const f = e.target.files[0];
       if (!f) return;

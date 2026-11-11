@@ -347,8 +347,9 @@
       c.width = c.height = 1;
       const g = c.getContext('2d');
       g.drawImage(img, 1, 1, 1, 1, 0, 0, 1, 1);
-      const [r, gg, b] = g.getImageData(0, 0, 1, 1).data;
-      img.parentNode.style.background = `rgb(${r},${gg},${b})`;
+      const [r, gg, b, a] = g.getImageData(0, 0, 1, 1).data;
+      /* شعار بخلفية شفافة: البكسل الشفاف يُقرأ أسود، فتبقى الدائرة بيضاء */
+      img.parentNode.style.background = a < 128 ? '#fff' : `rgb(${r},${gg},${b})`;
     } catch {
       /* تجاهل */
     }

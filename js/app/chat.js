@@ -255,9 +255,16 @@
     w.hidden = true;
     w.innerHTML = `<div class="cw-bar"><span class="cw-t">${icon('message')}<b>الدردشة الداخلية</b><span class="cw-un" hidden></span></span><button type="button" data-cw="min" title="تصغير">—</button><button type="button" data-cw="solo" class="cw-full" title="نافذة مستقلة خارج المتصفح تضعها في أي مكان على الشاشة">🗗 نافذة مستقلة</button><button type="button" data-cw="max" class="cw-full" title="فتح في صفحة الدردشة الكاملة">⤢ فتح في الدردشة</button><button type="button" data-cw="x" title="إغلاق">✕</button></div><div class="cw-body"></div>${['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].map((d) => `<span class="cw-rz ${d}" data-rz="${d}"></span>`).join('')}`;
     document.body.appendChild(w);
-    const bar = $('.cw-bar', w),
-      g = cwGet();
-    /* المقاس والمكان المحفوظان (افتراضياً بجوار المساعد أسفل الشاشة) */
+    const bar = $('.cw-bar', w);
+    const place = cwPlace(w);
+    cwDragWire(w, bar, place);
+    cwResizeWire(w);
+    cwButtons(w);
+    return w;
+  }
+  /* المقاس والمكان المحفوظان (افتراضياً بجوار المساعد أسفل الشاشة)، ويبقى داخل الشاشة عند تغيير مقاسها */
+  function cwPlace(w) {
+    const g = cwGet();
     const W0 = Math.max(420, Math.min(780, innerWidth - 420)),
       H0 = Math.max(340, Math.min(560, innerHeight - 90));
     w.style.width = `${g.w || W0}px`;
@@ -270,6 +277,9 @@
     };
     place(g.x ?? 126, g.y ?? innerHeight - (g.h || H0) - 14);
     window.addEventListener('resize', () => place(parseFloat(w.style.left), parseFloat(w.style.top)));
+    return place;
+  }
+  function cwDragWire(w, bar, place) {
     /* السحب من الشريط العلوي */
     let drag = null;
     bar.addEventListener('pointerdown', (e) => {
@@ -293,6 +303,8 @@
       else if (moved) w._top = undefined;
       else if (w.classList.contains('min')) cwMin(false);
     });
+  }
+  function cwResizeWire(w) {
     /* تغيير المقاس بالسحب من أي حافة أو زاوية */
     let rz = null;
     w.addEventListener('pointerdown', (e) => {
@@ -340,6 +352,9 @@
       clearTimeout(rt);
       rt = setTimeout(() => cwSet({ w: w.offsetWidth, h: w.offsetHeight }), 300);
     }).observe(w);
+  }
+  /* الأزرار: تصغير، إغلاق، نافذة مستقلة، فتح في صفحة الدردشة، وعدد غير المقروء على النافذة المصغرة */
+  function cwButtons(w) {
     $('[data-cw="min"]', w).onclick = () => cwMin(!w.classList.contains('min'));
     $('[data-cw="x"]', w).onclick = () => cwClose();
     $('[data-cw="solo"]', w).onclick = () => {
@@ -358,7 +373,6 @@
         u.textContent = n;
       }, 50),
     );
-    return w;
   }
   function cwOpen(conv) {
     const w = chatWin();

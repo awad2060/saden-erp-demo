@@ -35,9 +35,11 @@ window.SES_PAGES['dashboard'] = function (S) {
         ? 'جميع الطلبات'
         : state.user.viewScope === 'branch'
           ? 'طلبات فرعك'
-          : state.user.role === 'accountant'
-            ? 'طلباتك فقط'
-            : 'الطلبات المارة عليك';
+          : state.user.viewScope === 'dept'
+            ? 'طلبات إدارتك'
+            : state.user.role === 'accountant'
+              ? 'طلباتك فقط'
+              : 'الطلبات المارة عليك';
     main.innerHTML = `${canExec() ? '<div class="ex-back no-print"><a class="btn" href="#/dashboard?view=exec">مركز القيادة التنفيذية ←</a></div>' : ''}${head('لوحة المؤشرات', d.scoped ? `مؤشرات فرع ${esc(d.scoped)}: الطلبات والمبالغ المعتمدة وأعمال الفرع` : `متابعة أعمال كل إدارات الشركة، والمبالغ المعتمدة، وأين تتوقف الطلبات — ${scopeNote}`, `<button class="btn" id="dCustom">⚙ تخصيص العرض</button><a class="btn primary" href="#/report?${dashQs(d)}" target="_blank">📄 تقرير للطباعة / PDF</a><button class="btn" id="dCsv">⬇ Excel (CSV)</button>`)}
       <div id="exPay"></div>
       <div class="dash-filters">

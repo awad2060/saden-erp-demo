@@ -3,7 +3,7 @@
  * تُحمَّل قبل app.js، وتعمل داخله عند أول استخدام: S فيه أدوات app.js المشتركة (esc، api، icon ...). */
 window.SES_PAGES = window.SES_PAGES || {};
 window.SES_PAGES['apps'] = function (S) {
-  const { $, $$, APP_TONES, apStyle, apStyleApply, apStyleKey, api, appHue, esc, flatItems, icon, navItems, shell, state } = S;
+  const { $, $$, APP_TONES, api, appHue, esc, flatItems, icon, navItems, shell, state } = S;
   function viewApps(query = {}) {
     /* حالة الصفحة: ما يتغير بعد العرض (level، view، gsTimer، gsSeq) */
     const vs = {};
@@ -34,13 +34,8 @@ window.SES_PAGES['apps'] = function (S) {
       trail.push(g);
       vs.level = g.items;
     }
-    const VK = `apps-view:${state.user.id}`;
+    /* عرض واحد ثابت: شبكة الأيقونات (قرار الإدارة 2026-11 — أُلغي اختيار الشبكة / القائمة) */
     vs.view = 'grid';
-    try {
-      vs.view = localStorage.getItem(VK) === 'list' ? 'list' : 'grid';
-    } catch {
-      /* تجاهل */
-    }
     const sum = (g) => flatItems(g.items).reduce((a, it) => a + (Number(it[3]) || 0), 0);
     const tile = (it, n) => {
       const [a, c, d] = APP_TONES[n % APP_TONES.length];
@@ -56,12 +51,6 @@ window.SES_PAGES['apps'] = function (S) {
     const setView = (v) => {
       vs.view = v;
       grid.classList.toggle('list', v === 'list');
-      $$('[data-vw]', main).forEach((b) => b.classList.toggle('on', b.dataset.vw === v));
-      try {
-        localStorage.setItem(VK, v);
-      } catch {
-        /* تجاهل */
-      }
     };
     wireApps(grid, main, setView, trail, vs.view);
     const levelHtml = grid.innerHTML,
@@ -210,7 +199,6 @@ window.SES_PAGES['apps'] = function (S) {
         $$('.ap-dots', main).forEach((x) => x.remove());
       }
     };
-    $$('[data-vw]', main).forEach((b) => b.addEventListener('click', repage));
     let rzT = 0;
     const onRz = () => {
       if (!document.body.contains(grid)) {
@@ -226,28 +214,12 @@ window.SES_PAGES['apps'] = function (S) {
   }
   /* أحداث viewApps */
   function wireApps(grid, main, setView, trail, view) {
-    $$('[data-vw]', main).forEach((b) => {
-      b.onclick = () => setView(b.dataset.vw);
-    });
     setView(view);
-    const markSt = () => $$('[data-st]', main).forEach((b) => b.classList.toggle('on', b.dataset.st === apStyle()));
-    $$('[data-st]', main).forEach((b) => {
-      b.onclick = () => {
-        try {
-          localStorage.setItem(apStyleKey(), b.dataset.st);
-        } catch {
-          /* تجاهل */
-        }
-        apStyleApply();
-        markSt();
-      };
-    });
-    markSt();
     /* البحث في كل الصفحات مهما كان مستواها */
     /* صفوف صفحة التطبيقات (المستوى الأعلى): كل صف يبدأ بأول أيقونة ظاهرة من مجموعته */
     const AP_ROWS = [
-      ['#/marketing', '#/crm', '#/tenders', '#/projects', '#/procurement', 'quality', 'legal', '#/docs'],
-      ['requests', '#/tasks', '#/calendar', '#/contacts', '#/todo', '#/notes', '#/reports', '#/trash'],
+      ['marketing', '#/tenders', '#/projects', '#/procurement', 'quality', 'legal', '#/docs'],
+      ['requests', '#/tasks', '#/contacts', 'tools', '#/reports', '#/trash'],
       ['#/settings', '#/access-requests', '#/decision-center', '#/about', '#/mobile-app', '#/account', 'me'],
     ];
     if (!trail.length)
@@ -258,10 +230,7 @@ window.SES_PAGES['apps'] = function (S) {
   }
   /* محتوى viewApps (HTML) */
   function renderViewApps(crumbs, cur, level, main, tile) {
-    main.innerHTML = `<div class="ap-wrap"><div class="ap-head"><div><h1>${cur ? esc(cur.title) : 'التطبيقات'}</h1><div class="muted">${cur ? 'اختر الصفحة' : `أهلاً ${esc(state.user.name.split(' ')[0])} — اختر ما تريد العمل عليه`}</div></div>
-        <div class="ap-tools">
-          <span class="ap-vw ap-st" title="شكل الأيقونات"><button type="button" data-st="modern" title="الشكل الحديث">${window.I18N && I18N.lang === 'en' ? 'Modern' : 'حديث'}</button><button type="button" data-st="classic" title="الشكل الأصلي">${window.I18N && I18N.lang === 'en' ? 'Original' : 'الأصلي'}</button></span>
-          <span class="ap-vw"><button type="button" data-vw="grid" title="عرض شبكة">${icon('grid')}</button><button type="button" data-vw="list" title="عرض قائمة تحت بعض">${icon('list')}</button></span></div></div>
+    main.innerHTML = `<div class="ap-wrap"><div class="ap-head"><div><h1>${cur ? esc(cur.title) : 'التطبيقات'}</h1><div class="muted">${cur ? 'اختر الصفحة' : `أهلاً ${esc(state.user.name.split(' ')[0])} — اختر ما تريد العمل عليه`}</div></div></div>
       ${crumbs}<div class="ap-grid" id="apGrid">${level.map(tile).join('')}</div><div id="gsRes" class="gs-res" hidden></div></div>`;
   }
   /* جزء من pager: host.insertAdjacentHTML(… */

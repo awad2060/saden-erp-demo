@@ -1,4 +1,4 @@
-/* إضافات قاموس الترجمة (٢) — يُحمَّل قبل i18n.js ويملأ window.SES_I18N بالترتيب (القاموس D والأنماط P) */
+/* إضافات قاموس الترجمة (٢) — يُحمَّل قبل i18n.js ويملأ window.SES_I18N.en بالترتيب (القاموس D والأنماط P) */
 (function (I) {
   'use strict';
   const { D, P } = I;
@@ -87,4 +87,4 @@
     'تصلك في الدردشة ←': 'in your chat →',
     'أيقونات التطبيقات وما تحتها': 'App icons and their contents',
   });
-})((window.SES_I18N = window.SES_I18N || { D: {}, P: [] }));
+})(((I) => (I.en = I.en || { D: {}, P: [] }))((window.SES_I18N = window.SES_I18N || {})));

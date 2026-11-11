@@ -199,26 +199,7 @@
     return pdfLib;
   }
   async function attachmentPages(box, r) {
-    /* نموذج آخر يوم دوام المعتمد المرتبط بملف التصفية: أول مرفقاته */
-    if (box && r.lastDayDoc)
-      box.insertAdjacentHTML(
-        'beforeend',
-        `<div class="att-page"><div class="att-head"><span class="att-title">📎 نموذج آخر يوم دوام معتمد</span><small><bdi dir="ltr">${esc(r.lastDayDoc.serial)}</bdi></small><span>${esc(r.serial)}</span></div><div class="att-body att-letter">${SF.renderLetter('lastWorkDay', r.lastDayDoc.data, letterCtx(r.lastDayDoc))}</div></div>`,
-      );
-    /* الخطاب بعرض صفحة المرفق (يُصغَّر ليظهر كاملاً) */
-    if (box && r.lastDayDoc) {
-      const pg = box.lastElementChild,
-        body = $('.att-letter', pg),
-        L = $('.letter', pg);
-      const fit = () => {
-        L.style.transform = '';
-        const k = Math.min(1, body.clientWidth / L.offsetWidth);
-        L.style.transform = `scale(${k})`;
-        body.style.height = `${Math.ceil(L.offsetHeight * k)}px`;
-      };
-      requestAnimationFrame(fit);
-      window.addEventListener('resize', fit);
-    }
+    lastDayPage(box, r);
     if (!box || !r.attachments.length) return;
     const btns = $$('[data-print]');
     btns.forEach((b) => {
@@ -241,34 +222,8 @@
           'beforeend',
           `<div class="att-page">${head(a)}<div class="att-body"><img src="${url(a)}" alt="${esc(a.name)}"></div></div>`,
         );
-      } else if (ext === '.pdf') {
-        try {
-          const lib = await loadPdfLib();
-          const buf = await (await fetch(url(a), { credentials: 'same-origin' })).arrayBuffer();
-          const pdf = await lib.getDocument({ data: buf }).promise;
-          const n = Math.min(pdf.numPages, 50);
-          for (let i = 1; i <= n; i++) {
-            const pg = await pdf.getPage(i);
-            const vp1 = pg.getViewport({ scale: 1 });
-            /* دقة طباعة مناسبة (حوالي 150 نقطة لكل بوصة لعرض A4) */
-            const vp = pg.getViewport({ scale: 1240 / vp1.width });
-            const cv = document.createElement('canvas');
-            cv.width = Math.round(vp.width);
-            cv.height = Math.round(vp.height);
-            const ctx = cv.getContext('2d');
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(0, 0, cv.width, cv.height);
-            await pg.render({ canvasContext: ctx, viewport: vp }).promise;
-            box.insertAdjacentHTML(
-              'beforeend',
-              `<div class="att-page">${head(a, pdf.numPages > 1 ? `صفحة ${i} من ${pdf.numPages}` : '')}<div class="att-body"><img src="${cv.toDataURL('image/jpeg', 0.88)}" alt=""></div></div>`,
-            );
-          }
-          if (pdf.numPages > n) others.push({ a, note: `عُرضت أول ${n} صفحة فقط` });
-        } catch {
-          others.push({ a, note: 'تعذر عرض الملف' });
-        }
-      } else others.push({ a, note: 'لا يمكن عرض هذا النوع في الطباعة' });
+      } else if (ext === '.pdf') await pdfPages(box, a, url(a), head, others);
+      else others.push({ a, note: 'لا يمكن عرض هذا النوع في الطباعة' });
     }
     if (others.length) {
       box.insertAdjacentHTML(
@@ -294,6 +249,57 @@
       b.disabled = false;
     });
   }
+  /* نموذج آخر يوم دوام المعتمد المرتبط بملف التصفية: أول مرفقاته — الخطاب بعرض صفحة المرفق (يُصغَّر ليظهر كاملاً) */
+  function lastDayPage(box, r) {
+    if (!box || !r.lastDayDoc) return;
+    box.insertAdjacentHTML(
+      'beforeend',
+      `<div class="att-page"><div class="att-head"><span class="att-title">📎 نموذج آخر يوم دوام معتمد</span><small><bdi dir="ltr">${esc(r.lastDayDoc.serial)}</bdi></small><span>${esc(r.serial)}</span></div><div class="att-body att-letter">${SF.renderLetter('lastWorkDay', r.lastDayDoc.data, letterCtx(r.lastDayDoc))}</div></div>`,
+    );
+    const pg = box.lastElementChild,
+      body = $('.att-letter', pg),
+      L = $('.letter', pg);
+    const fit = () => {
+      L.style.transform = '';
+      const k = Math.min(1, body.clientWidth / L.offsetWidth);
+      L.style.transform = `scale(${k})`;
+      body.style.height = `${Math.ceil(L.offsetHeight * k)}px`;
+    };
+    requestAnimationFrame(fit);
+    window.addEventListener('resize', fit);
+  }
+  /* ملف PDF: صفحة مرفق لكل صفحة منه (حتى 50)، وما تعذّر عرضه يُذكر في قائمة المرفقات الأخرى */
+  async function pdfPages(box, a, src, head, others) {
+    try {
+      const lib = await loadPdfLib();
+      const buf = await (await fetch(src, { credentials: 'same-origin' })).arrayBuffer();
+      const pdf = await lib.getDocument({ data: buf }).promise;
+      const n = Math.min(pdf.numPages, 50);
+      for (let i = 1; i <= n; i++) {
+        const img = await pdfPageImage(await pdf.getPage(i));
+        box.insertAdjacentHTML(
+          'beforeend',
+          `<div class="att-page">${head(a, pdf.numPages > 1 ? `صفحة ${i} من ${pdf.numPages}` : '')}<div class="att-body"><img src="${img}" alt=""></div></div>`,
+        );
+      }
+      if (pdf.numPages > n) others.push({ a, note: `عُرضت أول ${n} صفحة فقط` });
+    } catch {
+      others.push({ a, note: 'تعذر عرض الملف' });
+    }
+  }
+  /* صورة صفحة PDF بدقة طباعة مناسبة (حوالي 150 نقطة لكل بوصة لعرض A4) */
+  async function pdfPageImage(pg) {
+    const vp1 = pg.getViewport({ scale: 1 });
+    const vp = pg.getViewport({ scale: 1240 / vp1.width });
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(vp.width);
+    cv.height = Math.round(vp.height);
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    await pg.render({ canvasContext: ctx, viewport: vp }).promise;
+    return cv.toDataURL('image/jpeg', 0.88);
+  }
 
   /* ---------- لوحة المؤشرات ---------- */
   const SERIES = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)'];
@@ -308,6 +314,86 @@
     if (h <= 0) return '';
     r = Math.min(r, w / 2, h);
     return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+  }
+  /* خطوط الشبكة الأفقية الخمسة وقيمها على يمين المخطط */
+  function gridLines({ W, mR, mL, max, y, fmtTick }) {
+    let s = '';
+    for (let t = 0; t <= 4; t++) {
+      const v = (max / 4) * t,
+        yy = y(v);
+      s += `<line x1="${mL}" x2="${W - mR}" y1="${yy}" y2="${yy}" class="${t ? 'grid' : 'base'}"/><text x="${W - mR + 8}" y="${yy + 4}" class="tick" text-anchor="start">${esc(fmtTick(v))}</text>`;
+    }
+    return s;
+  }
+  /* اسم الشهر تحت العمود: كاملاً إن اتسع، وإلا المختصر (أو رقمه) */
+  const axisLabel = (band, labels, short, i) =>
+    esc(
+      band < Math.max(44, Math.max(...labels.map((l) => String(l).length)) * 7.5) ? (short || labels.map((_, k) => k + 1))[i] : labels[i],
+    );
+  /* التلميح: عنوان (الشهر) ثم صف لكل سلسلة (لون، قيمة، اسم) */
+  function tipFill(tip, label, rows, fmtTip) {
+    tip.replaceChildren();
+    const hd = document.createElement('div');
+    hd.className = 'tip-h';
+    hd.textContent = label;
+    tip.appendChild(hd);
+    rows.forEach(([x, v]) => {
+      const row = document.createElement('div');
+      row.className = 'tip-r';
+      const key = document.createElement('i');
+      key.style.background = x.color;
+      const b = document.createElement('b');
+      b.textContent = fmtTip(v);
+      const l = document.createElement('span');
+      l.textContent = x.name;
+      row.append(key, b, l);
+      tip.appendChild(row);
+    });
+  }
+  /* موضع التلميح فوق العمود (داخل حدود المخطط) */
+  function tipPlace(tip, box, rect) {
+    tip.hidden = false;
+    const br = box.getBoundingClientRect(),
+      rr = rect.getBoundingClientRect();
+    let left = rr.left - br.left + rr.width / 2 - tip.offsetWidth / 2;
+    left = Math.max(0, Math.min(left, br.width - tip.offsetWidth));
+    tip.style.left = `${left}px`;
+    tip.style.top = '4px';
+  }
+  /* المرور والتركيز على مناطق الأعمدة يُظهر التلميح، والخروج يخفيه */
+  function hitWire(el, box, show, hide) {
+    $$('.hit', el).forEach((h) => {
+      h.addEventListener('pointerenter', () => show(h));
+      h.addEventListener('focus', () => show(h));
+      h.addEventListener('blur', hide);
+    });
+    box.addEventListener('pointerleave', hide);
+  }
+  /* أعمدة شهر واحد (مكدسة: الجزء الأعلى بزاوية مستديرة) وقيمة الإجمالي واسم الشهر ومنطقة المرور */
+  function columnSvg(g, vals, i) {
+    const { xC, bw, y, series, totals, totalLabel, maxIdx, fmtTick, H, band, labels, short, mT, ih } = g;
+    const cx = xC(i),
+      x0 = cx - bw / 2;
+    let acc = 0,
+      s = '';
+    const top = vals.reduce((last, v, k) => (v > 0 ? k : last), -1);
+    vals.forEach((v, k) => {
+      if (v <= 0) return;
+      const y1 = y(acc + v),
+        y0 = y(acc);
+      const gap = acc > 0 ? 2 : 0; /* فاصل 2px بين الأجزاء المكدسة */
+      const h = y0 - y1 - gap;
+      s +=
+        k === top
+          ? `<path d="${colPath(x0, y1, bw, h, 4)}" fill="${series[k].color}"/>`
+          : `<rect x="${x0}" y="${y1}" width="${bw}" height="${Math.max(0, h)}" fill="${series[k].color}"/>`;
+      acc += v;
+    });
+    if (totals[i] > 0 && (totalLabel === 'all' || i === maxIdx))
+      s += `<text x="${cx}" y="${y(totals[i]) - 6}" class="vlabel" text-anchor="middle">${esc(fmtTick(totals[i]))}</text>`;
+    s += `<text x="${cx}" y="${H - 10}" class="tick" text-anchor="middle">${axisLabel(band, labels, short, i)}</text>`;
+    s += `<rect class="hit" x="${cx - band / 2}" y="${mT}" width="${band}" height="${ih}" data-i="${i}" tabindex="0"/>`;
+    return s;
   }
   /* مخطط أعمدة شهرية (مكدسة عند تعدد السلاسل) — الأشهر من اليمين لليسار */
   /* labels: أسماء الشهور على المحور (افتراضياً شهور السنة) */
@@ -326,34 +412,11 @@
     const max = niceMax(Math.max(...totals));
     const y = (v) => mT + ih - (v / max) * ih;
     const xC = (i) => W - mR - (i + 0.5) * band;
-    let s = '';
-    for (let t = 0; t <= 4; t++) {
-      const v = (max / 4) * t,
-        yy = y(v);
-      s += `<line x1="${mL}" x2="${W - mR}" y1="${yy}" y2="${yy}" class="${t ? 'grid' : 'base'}"/><text x="${W - mR + 8}" y="${yy + 4}" class="tick" text-anchor="start">${esc(fmtTick(v))}</text>`;
-    }
+    let s = gridLines({ W, mR, mL, max, y, fmtTick });
     const maxIdx = totals.indexOf(Math.max(...totals));
+    const g = { xC, bw, y, series, totals, totalLabel, maxIdx, fmtTick, H, band, labels, short, mT, ih };
     values.forEach((vals, i) => {
-      const cx = xC(i),
-        x0 = cx - bw / 2;
-      let acc = 0;
-      const top = vals.reduce((last, v, k) => (v > 0 ? k : last), -1);
-      vals.forEach((v, k) => {
-        if (v <= 0) return;
-        const y1 = y(acc + v),
-          y0 = y(acc);
-        const gap = acc > 0 ? 2 : 0; /* فاصل 2px بين الأجزاء المكدسة */
-        const h = y0 - y1 - gap;
-        s +=
-          k === top
-            ? `<path d="${colPath(x0, y1, bw, h, 4)}" fill="${series[k].color}"/>`
-            : `<rect x="${x0}" y="${y1}" width="${bw}" height="${Math.max(0, h)}" fill="${series[k].color}"/>`;
-        acc += v;
-      });
-      if (totals[i] > 0 && (totalLabel === 'all' || i === maxIdx))
-        s += `<text x="${cx}" y="${y(totals[i]) - 6}" class="vlabel" text-anchor="middle">${esc(fmtTick(totals[i]))}</text>`;
-      s += `<text x="${cx}" y="${H - 10}" class="tick" text-anchor="middle">${esc(band < Math.max(44, Math.max(...labels.map((l) => String(l).length)) * 7.5) ? (short || labels.map((_, k) => k + 1))[i] : labels[i])}</text>`;
-      s += `<rect class="hit" x="${cx - band / 2}" y="${mT}" width="${band}" height="${ih}" data-i="${i}" tabindex="0"/>`;
+      s += columnSvg(g, vals, i);
     });
     const legend =
       series.length > 1
@@ -367,51 +430,41 @@
     const show = (rect) => {
       const i = Number(rect.dataset.i);
       $$('.hit', el).forEach((h) => h.classList.toggle('on', h === rect));
-      tip.replaceChildren();
-      const hd = document.createElement('div');
-      hd.className = 'tip-h';
-      hd.textContent = labels[i];
-      tip.appendChild(hd);
-      const rows = series.length > 1 ? series.map((x, k) => [x, values[i][k]]) : [[series[0], values[i][0]]];
-      rows.forEach(([x, v]) => {
-        const row = document.createElement('div');
-        row.className = 'tip-r';
-        const key = document.createElement('i');
-        key.style.background = x.color;
-        const b = document.createElement('b');
-        b.textContent = fmtTip(v);
-        const l = document.createElement('span');
-        l.textContent = x.name;
-        row.append(key, b, l);
-        tip.appendChild(row);
-      });
+      tipFill(tip, labels[i], series.length > 1 ? series.map((x, k) => [x, values[i][k]]) : [[series[0], values[i][0]]], fmtTip);
       if (series.length > 1) {
         const tot = document.createElement('div');
         tot.className = 'tip-t';
         tot.textContent = `الإجمالي: ${fmtTip(totals[i])}`;
         tip.appendChild(tot);
       }
-      tip.hidden = false;
-      const br = box.getBoundingClientRect(),
-        rr = rect.getBoundingClientRect();
-      let left = rr.left - br.left + rr.width / 2 - tip.offsetWidth / 2;
-      left = Math.max(0, Math.min(left, br.width - tip.offsetWidth));
-      tip.style.left = `${left}px`;
-      tip.style.top = '4px';
+      tipPlace(tip, box, rect);
     };
     const hide = () => {
       tip.hidden = true;
       $$('.hit', el).forEach((h) => h.classList.remove('on'));
     };
-    $$('.hit', el).forEach((h) => {
-      h.addEventListener('pointerenter', () => show(h));
-      h.addEventListener('focus', () => show(h));
-      h.addEventListener('blur', hide);
-    });
-    box.addEventListener('pointerleave', hide);
+    hitWire(el, box, show, hide);
     return el;
   }
 
+  /* خطوط السلاسل ونقاطها، وتسمية مباشرة لآخر قيمة غير صفرية في كل سلسلة */
+  function lineSvg(series, n, xC, y, fmtTick) {
+    let s = '';
+    series.forEach((x) => {
+      const pts = x.values.map((v, i) => `${xC(i)},${y(v)}`).join(' ');
+      s += `<polyline points="${pts}" fill="none" stroke="${x.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"${x.dashed ? ' stroke-dasharray="5 4"' : ''}/>`;
+      x.values.forEach((v, i) => {
+        s += `<circle class="pt" data-i="${i}" cx="${xC(i)}" cy="${y(v)}" r="4" fill="${x.color}" stroke="var(--surface)" stroke-width="2"/>`;
+      });
+    });
+    series.forEach((x) => {
+      let i = n - 1;
+      while (i > 0 && !x.values[i]) i--;
+      if (x.values[i])
+        s += `<text x="${xC(i)}" y="${y(x.values[i]) - 9}" class="vlabel" text-anchor="middle">${esc(fmtTick(x.values[i]))}</text>`;
+    });
+    return s;
+  }
   /* مخطط خطي شهري (سنة حالية مقابل السابقة) مع خط عمودي وتلميح عند المرور — الأشهر من اليمين لليسار */
   function lineChart({ series, fmtTick, fmtTip, width, labels = MONTHS, short }) {
     const n = Math.max(1, series[0].values.length);
@@ -427,29 +480,11 @@
     const max = niceMax(Math.max(1, ...series.flatMap((x) => x.values)));
     const y = (v) => mT + ih - (v / max) * ih;
     const xC = (i) => W - mR - (i + 0.5) * band;
-    let s = '';
-    for (let t = 0; t <= 4; t++) {
-      const v = (max / 4) * t,
-        yy = y(v);
-      s += `<line x1="${mL}" x2="${W - mR}" y1="${yy}" y2="${yy}" class="${t ? 'grid' : 'base'}"/><text x="${W - mR + 8}" y="${yy + 4}" class="tick" text-anchor="start">${esc(fmtTick(v))}</text>`;
-    }
+    let s = gridLines({ W, mR, mL, max, y, fmtTick });
     for (let i = 0; i < n; i++)
-      s += `<text x="${xC(i)}" y="${H - 10}" class="tick" text-anchor="middle">${esc(band < Math.max(44, Math.max(...labels.map((l) => String(l).length)) * 7.5) ? (short || labels.map((_, k) => k + 1))[i] : labels[i])}</text>`;
+      s += `<text x="${xC(i)}" y="${H - 10}" class="tick" text-anchor="middle">${axisLabel(band, labels, short, i)}</text>`;
     s += '<line class="xhair" x1="0" x2="0" y1="0" y2="0"/>';
-    series.forEach((x) => {
-      const pts = x.values.map((v, i) => `${xC(i)},${y(v)}`).join(' ');
-      s += `<polyline points="${pts}" fill="none" stroke="${x.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"${x.dashed ? ' stroke-dasharray="5 4"' : ''}/>`;
-      x.values.forEach((v, i) => {
-        s += `<circle class="pt" data-i="${i}" cx="${xC(i)}" cy="${y(v)}" r="4" fill="${x.color}" stroke="var(--surface)" stroke-width="2"/>`;
-      });
-    });
-    /* تسمية مباشرة لآخر قيمة غير صفرية في كل سلسلة */
-    series.forEach((x) => {
-      let i = n - 1;
-      while (i > 0 && !x.values[i]) i--;
-      if (x.values[i])
-        s += `<text x="${xC(i)}" y="${y(x.values[i]) - 9}" class="vlabel" text-anchor="middle">${esc(fmtTick(x.values[i]))}</text>`;
-    });
+    s += lineSvg(series, n, xC, y, fmtTick);
     for (let i = 0; i < n; i++)
       s += `<rect class="hit" x="${xC(i) - band / 2}" y="${mT}" width="${band}" height="${ih}" data-i="${i}" tabindex="0"/>`;
     const el = document.createElement('div');
@@ -468,28 +503,13 @@
       xh.setAttribute('y1', mT);
       xh.setAttribute('y2', mT + ih);
       xh.classList.add('on');
-      tip.replaceChildren();
-      const hd = document.createElement('div');
-      hd.className = 'tip-h';
-      hd.textContent = labels[i];
-      tip.appendChild(hd);
-      series.forEach((x) => {
-        const row = document.createElement('div');
-        row.className = 'tip-r';
-        const key = document.createElement('i');
-        key.style.background = x.color;
-        const b = document.createElement('b');
-        b.textContent = fmtTip(x.values[i]);
-        const l = document.createElement('span');
-        l.textContent = x.name;
-        row.append(key, b, l);
-        tip.appendChild(row);
-      });
-      tip.hidden = false;
-      const br = box.getBoundingClientRect(),
-        rr = rect.getBoundingClientRect();
-      tip.style.left = `${Math.max(0, Math.min(rr.left - br.left + rr.width / 2 - tip.offsetWidth / 2, br.width - tip.offsetWidth))}px`;
-      tip.style.top = '4px';
+      tipFill(
+        tip,
+        labels[i],
+        series.map((x) => [x, x.values[i]]),
+        fmtTip,
+      );
+      tipPlace(tip, box, rect);
     };
     const hide = () => {
       tip.hidden = true;
@@ -498,12 +518,7 @@
         c.classList.remove('on');
       });
     };
-    $$('.hit', el).forEach((h) => {
-      h.addEventListener('pointerenter', () => show(h));
-      h.addEventListener('focus', () => show(h));
-      h.addEventListener('blur', hide);
-    });
-    box.addEventListener('pointerleave', hide);
+    hitWire(el, box, show, hide);
     return el;
   }
 

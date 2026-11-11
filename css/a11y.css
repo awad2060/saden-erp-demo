@@ -1,0 +1,50 @@
+/* ================= إمكانية الوصول (Accessibility) — قواعد عامة لكل النظام =================
+   يُحمَّل بعد style.css. المحددات داخل :where() وزنها صفر، فأي تصميم focus خاص بعنصر
+   (مثل .in:focus أو .gx-search:focus-within) يبقى هو الغالب، وهذه القواعد تغطي الباقي فقط. */
+
+/* لون مؤشر التركيز: لون الهوية على الخلفيات الفاتحة، ولون فاتح على الداكنة (القائمة الجانبية والوضع الداكن)
+   بحيث يبقى التباين مع الخلفية 3:1 على الأقل */
+:root {
+  --focus: var(--brand);
+}
+:root[data-theme='dark'],
+.side {
+  --focus: #fca5a5;
+}
+
+/* 1) مؤشر واضح لمن يتنقل بلوحة المفاتيح (Tab) — لا يظهر عند الضغط بالماوس */
+:where(a, button, summary, select, textarea, input, [tabindex]:not([tabindex='-1']), [contenteditable='true']):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* حقول البريد الداخلي بلا إطار (outline: 0 في .gm-in): خط سفلي بلون التركيز بدل الإطار */
+.gm-row:focus-within {
+  box-shadow: inset 0 -2px 0 var(--focus);
+}
+
+/* 2) نص لقارئ الشاشة فقط (مخفي بصرياً) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 3) من فعّل «تقليل الحركة» في جهازه: تتوقف الحركات المستمرة والانتقالات في كل الشاشات
+   (الأحداث animationend/transitionend تبقى تُطلق لأن المدة لا تساوي صفراً) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

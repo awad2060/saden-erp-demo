@@ -3,7 +3,7 @@
   'use strict';
   const SF = window.SADEN_FORMS;
   const { esc } = SF;
-  const { $, $$, dt, api, toast, downloadXlsx, readXlsx, normDate, parseCsv } = S;
+  const { $, $$, dt, api, toast, readXlsx, normDate, normTime, parseCsv } = S;
   Object.assign(S, { geofencesModal, barcodeSvg, gridImportModal });
   /* ---------- بصمتي: الحضور والانصراف من الجوال بالموقع ---------- */
   const punchDeviceId = () => {
@@ -71,7 +71,16 @@
     const bg = document.createElement('div');
     bg.className = 'modal-bg';
     const ro = d.canEdit ? '' : ' readonly';
-    bg.innerHTML = `<div class="modal" style="max-width:980px;width:97%"><h3 style="margin-top:0">📍 مواقع الفروع للبصمة من الجوال</h3>
+    bg.innerHTML = gfHtml(d, ro);
+    document.body.appendChild(bg);
+    $('[data-x]', bg).onclick = () => bg.remove();
+    gfWireLink(bg);
+    gfWireCoords(bg);
+    if ($('#gfSave', bg)) $('#gfSave', bg).onclick = () => gfSave(bg);
+  }
+  /* جدول مواقع الفروع: الرابط وخط العرض والطول والنطاق، وأزرار الموقع الحالي والمسح والخريطة */
+  function gfHtml(d, ro) {
+    return `<div class="modal" style="max-width:980px;width:97%"><h3 style="margin-top:0">📍 مواقع الفروع للبصمة من الجوال</h3>
       <div class="hint">لكل فرع: <b>خط العرض</b> و<b>خط الطول</b> ونصف قطر النطاق بالمتر — أو الصق رابط الموقع من جوجل ماب (رابط المشاركة القصير أو رابط المتصفح) فيملأ النظام الإحداثيات تلقائياً. يقبل النظام بصمة الموظف داخل نطاق فرعه فقط، إلا من سمحت له بالحضور عن بُعد في ملفه.</div>
       <div class="tbl-wrap" style="max-height:60vh;overflow:auto"><table class="tbl gf-t"><thead><tr><th>الفرع</th><th>لصق رابط جوجل ماب</th><th>خط العرض (Latitude)</th><th>خط الطول (Longitude)</th><th>النطاق (م)</th><th></th></tr></thead><tbody>
       ${d.branches
@@ -86,18 +95,19 @@
         })
         .join('')}</tbody></table></div>
       <div class="merr"></div><div class="row" style="margin-top:12px">${d.canEdit ? '<button class="btn primary" id="gfSave">💾 حفظ</button>' : ''}<button class="btn" data-x>إغلاق</button></div></div>`;
-    document.body.appendChild(bg);
-    $('[data-x]', bg).onclick = () => bg.remove();
-    const setRow = (tr, c, note) => {
-      tr.querySelector('[data-lat]').value = c ? c.lat.toFixed(6) : '';
-      tr.querySelector('[data-lng]').value = c ? c.lng.toFixed(6) : '';
-      const a = tr.querySelector('[data-map]');
-      if (c) {
-        a.href = `https://www.google.com/maps?q=${c.lat},${c.lng}`;
-        a.hidden = false;
-      } else a.hidden = true;
-      tr.querySelector('.gf-msg').textContent = note || '';
-    };
+  }
+  /* تعبئة صف الفرع بالإحداثيات (أو مسحها) ورابط الخريطة والرسالة */
+  const gfSetRow = (tr, c, note) => {
+    tr.querySelector('[data-lat]').value = c ? c.lat.toFixed(6) : '';
+    tr.querySelector('[data-lng]').value = c ? c.lng.toFixed(6) : '';
+    const a = tr.querySelector('[data-map]');
+    if (c) {
+      a.href = `https://www.google.com/maps?q=${c.lat},${c.lng}`;
+      a.hidden = false;
+    } else a.hidden = true;
+    tr.querySelector('.gf-msg').textContent = note || '';
+  };
+  function gfWireLink(bg) {
     /* لصق الرابط: يُستخرج الموقع مباشرة، والرابط القصير يفتحه الخادم لمعرفة الإحداثيات */
     $$('[data-link]', bg).forEach((inp) => {
       const run = async () => {
@@ -107,7 +117,7 @@
         if (!v) return;
         const c = parseCoords(v);
         if (okCoord(c)) {
-          setRow(tr, c, '✔ تم استخراج الإحداثيات');
+          gfSetRow(tr, c, '✔ تم استخراج الإحداثيات');
           return;
         }
         if (
@@ -118,7 +128,7 @@
           msg.textContent = 'جاري قراءة الرابط...';
           try {
             const r = await api('POST', '/api/punch-admin/resolve-map', { url: v });
-            if (okCoord(r)) setRow(tr, r, '✔ تم استخراج الإحداثيات من الرابط');
+            if (okCoord(r)) gfSetRow(tr, r, '✔ تم استخراج الإحداثيات من الرابط');
             else msg.textContent = 'تعذر استخراج الإحداثيات — افتح الرابط وانسخ الإحداثيات يدوياً';
           } catch (err) {
             msg.textContent = err.message;
@@ -128,18 +138,21 @@
       inp.addEventListener('paste', () => setTimeout(run, 30));
       inp.addEventListener('change', run);
     });
+  }
+  /* خانة خط العرض، وموقعي الحالي، والمسح */
+  function gfWireCoords(bg) {
     /* لصق «خط العرض، خط الطول» معاً في خانة خط العرض يُوزَّع على الخانتين */
     $$('[data-lat]', bg).forEach((inp) =>
       inp.addEventListener('change', () => {
         const c = parseCoords(inp.value);
-        if (okCoord(c) && /[,،\s]/.test(inp.value.trim())) setRow(inp.closest('tr'), c);
+        if (okCoord(c) && /[,،\s]/.test(inp.value.trim())) gfSetRow(inp.closest('tr'), c);
       }),
     );
     $$('[data-here]', bg).forEach((b) => {
       b.onclick = async () => {
         try {
           const c = await getPos();
-          setRow(b.closest('tr'), { lat: c.latitude, lng: c.longitude }, `✔ موقعك الحالي (دقة ${Math.round(c.accuracy)} م)`);
+          gfSetRow(b.closest('tr'), { lat: c.latitude, lng: c.longitude }, `✔ موقعك الحالي (دقة ${Math.round(c.accuracy)} م)`);
         } catch (err) {
           toast(err.message, true);
         }
@@ -147,33 +160,33 @@
     });
     $$('[data-clr]', bg).forEach((b) => {
       b.onclick = () => {
-        setRow(b.closest('tr'), null);
+        gfSetRow(b.closest('tr'), null);
         b.closest('tr').querySelector('[data-link]').value = '';
       };
     });
-    if ($('#gfSave', bg))
-      $('#gfSave', bg).onclick = async () => {
-        const out = {};
-        for (const tr of $$('tr[data-br]', bg)) {
-          const la = tr.querySelector('[data-lat]').value.trim(),
-            lo = tr.querySelector('[data-lng]').value.trim();
-          if (!la && !lo) continue;
-          const c = { lat: Number(la), lng: Number(lo) };
-          if (!okCoord(c)) {
-            $('.merr', bg).innerHTML =
-              `<div class="err">إحداثيات فرع ${esc(tr.dataset.br)} غير صحيحة — خط العرض بين -90 و90، وخط الطول بين -180 و180 (مثال: 21.5433 و 39.1728)</div>`;
-            return;
-          }
-          out[tr.dataset.br] = { ...c, radius: Number(tr.querySelector('[data-rad]').value) || 150 };
-        }
-        try {
-          await api('PUT', '/api/punch-admin/geofences', { geofences: out });
-          toast('تم حفظ مواقع الفروع');
-          bg.remove();
-        } catch (err) {
-          $('.merr', bg).innerHTML = `<div class="err">${esc(err.message)}</div>`;
-        }
-      };
+  }
+  /* الحفظ: التحقق من إحداثيات كل فرع ثم الإرسال */
+  async function gfSave(bg) {
+    const out = {};
+    for (const tr of $$('tr[data-br]', bg)) {
+      const la = tr.querySelector('[data-lat]').value.trim(),
+        lo = tr.querySelector('[data-lng]').value.trim();
+      if (!la && !lo) continue;
+      const c = { lat: Number(la), lng: Number(lo) };
+      if (!okCoord(c)) {
+        $('.merr', bg).innerHTML =
+          `<div class="err">إحداثيات فرع ${esc(tr.dataset.br)} غير صحيحة — خط العرض بين -90 و90، وخط الطول بين -180 و180 (مثال: 21.5433 و 39.1728)</div>`;
+        return;
+      }
+      out[tr.dataset.br] = { ...c, radius: Number(tr.querySelector('[data-rad]').value) || 150 };
+    }
+    try {
+      await api('PUT', '/api/punch-admin/geofences', { geofences: out });
+      toast('تم حفظ مواقع الفروع');
+      bg.remove();
+    } catch (err) {
+      $('.merr', bg).innerHTML = `<div class="err">${esc(err.message)}</div>`;
+    }
   }
 
   /* ---------- تبويب «الدخول والحساب» في ملف الموظف: الحساب الشخصي للتطبيق والنظام ---------- */
@@ -340,7 +353,7 @@
     { key: 'plate', label: 'رقم اللوحة', required: true },
     { key: 'number', label: 'رقم المخالفة' },
     { key: 'date', label: 'تاريخ المخالفة', type: 'date', required: true },
-    { key: 'time', label: 'الوقت' },
+    { key: 'time', label: 'الوقت', type: 'time' },
     { key: 'type', label: 'نوع المخالفة' },
     { key: 'amount', label: 'المبلغ', required: true },
     { key: 'location', label: 'الموقع / المدينة' },
@@ -348,7 +361,8 @@
   const violChip = (s) =>
     `<span class="chip ${{ 'محالة للفرع': 'pending', 'معتمدة للسداد': 'pending', مسددة: 'approved', 'مخصومة من الموظف': 'approved', 'معترض عليها': 'returned', ملغاة: 'rejected' }[s] || ''}">${esc(s)}</span>`;
   /* جدول إدخال عام: صف لكل سجل، لصق من Excel، أو رفع ملف Excel / CSV بنفس عناوين الأعمدة */
-  function gridImportModal({ title, hint, cols, template, sample, save, done }) {
+  /* guide: شرح النموذج لورقة «شرح النموذج» في قالب Excel ({ about, help, steps, notes } — templates-center.js) */
+  function gridImportModal({ title, hint, cols, template, sample, guide, save, done }) {
     const cell = (f, v) =>
       f.auto
         ? `<input class="in" data-c="${f.key}" readonly tabindex="-1" style="width:46px;min-width:0;text-align:center">`
@@ -357,7 +371,24 @@
       `<tr>${cols.map((f) => `<td>${cell(f, vals[f.key])}</td>`).join('')}<td><button type="button" class="btn sm ghost" data-rm title="حذف الصف">✕</button></td></tr>`;
     const bg = document.createElement('div');
     bg.className = 'modal-bg';
-    bg.innerHTML = `<div class="modal" style="max-width:96vw;width:1200px"><h3 style="margin-top:0">${esc(title)}</h3>
+    bg.innerHTML = giHtml(title, hint, cols, rowHtml);
+    document.body.appendChild(bg);
+    /* نموذج الجدول G: النافذة وجسم الجدول والأعمدة وأدوات الصفوف */
+    const G = { bg, body: $('#giRows', bg), cols, rowHtml };
+    Object.assign(G, giTools(G));
+    $('[data-x]', bg).onclick = () => bg.remove();
+    giWireRows(G);
+    giWireFile(G, { title, file: template, defs: cols, sample, guide });
+    giWireSave(G, save, done);
+    G.count();
+  }
+  /* النافذة: الشرح، والقالب ورفع الملف وإضافة الصفوف، والجدول (5 صفوف فارغة)، والحفظ */
+  const giHtml = (
+    title,
+    hint,
+    cols,
+    rowHtml,
+  ) => `<div class="modal" style="max-width:96vw;width:1200px"><h3 style="margin-top:0">${esc(title)}</h3>
       <div class="hint" style="margin-bottom:10px">${hint}</div>
       <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:10px">
         <button type="button" class="btn sm" id="giTpl">📊 تحميل قالب Excel</button>
@@ -372,8 +403,11 @@
         .join('')}</tbody></table></div>
       <div id="giErr"></div>
       <div class="row" style="margin-top:12px;gap:8px"><button type="button" class="btn primary" id="giSave">💾 حفظ</button><button type="button" class="btn ghost" data-x>إلغاء</button></div></div>`;
-    document.body.appendChild(bg);
-    const body = $('#giRows', bg);
+  /* قيمة الخانة من الملف أو اللصق: التاريخ والوقت يوحَّدان (خانات Excel تُقرأ أرقاماً)، والباقي نص كما هو */
+  const GI_NORM = { date: normDate, time: normTime };
+  const giValue = (f, v) => (GI_NORM[f.type] || ((x) => String(x == null ? '' : x).trim()))(v);
+  /* أدوات الصفوف: المكتوب منها، والترقيم والعدد، وتعبئة صفوف من لصق أو ملف */
+  function giTools({ bg, body, cols, rowHtml }) {
     /* الصف مكتوب إذا فيه قيمة في خانة غير الترقيم التلقائي */
     const filled = () => $$('tr', body).filter((tr) => $$('[data-c]', tr).some((i) => !i.readOnly && i.value.trim()));
     const count = () => {
@@ -394,13 +428,16 @@
         const inputs = $$('[data-c]', tr);
         vals.forEach((v, k) => {
           const inp = inputs[startCol + k];
-          if (inp && !inp.readOnly) inp.value = cols[startCol + k].type === 'date' ? normDate(v) : String(v == null ? '' : v).trim();
+          if (inp && !inp.readOnly) inp.value = giValue(cols[startCol + k], v);
         });
         tr = tr.nextElementSibling;
       });
       count();
     };
-    $('[data-x]', bg).onclick = () => bg.remove();
+    return { filled, count, fillRows };
+  }
+  /* إضافة الصفوف وحذفها، والعدّ عند الكتابة، ولصق جدول (من Excel) يوزَّع على الصفوف والأعمدة */
+  function giWireRows({ bg, body, rowHtml, count, fillRows }) {
     $('#giAdd', bg).onclick = () => body.insertAdjacentHTML('beforeend', rowHtml());
     $('#giAdd10', bg).onclick = () =>
       body.insertAdjacentHTML(
@@ -432,7 +469,10 @@
         [...tr.children].indexOf(e.target.closest('td')),
       );
     });
-    $('#giTpl', bg).onclick = () => downloadXlsx(template, [cols.map((f) => f.label), sample], title.slice(0, 31));
+  }
+  /* قالب Excel، ورفع ملف Excel / CSV (الصف الأول عناوين إن طابقت أسماء الأعمدة) */
+  function giWireFile({ bg, body, cols, fillRows }, tpl) {
+    $('#giTpl', bg).onclick = () => window.SES_TEMPLATES.download(S, tpl);
     $('#giFile', bg).onchange = async (e) => {
       const f = e.target.files[0];
       if (!f) return;
@@ -456,6 +496,9 @@
       fillRows(rows, null, 0);
       e.target.value = '';
     };
+  }
+  /* الحفظ: الصفوف المكتوبة فقط (صف واحد على الأقل) */
+  function giWireSave({ bg, filled }, save, done) {
     $('#giSave', bg).onclick = async () => {
       const list = filled().map((tr) => Object.fromEntries($$('[data-c]', tr).map((i) => [i.dataset.c, i.value.trim()])));
       $('#giErr', bg).innerHTML = '';
@@ -473,7 +516,6 @@
         $('#giSave', bg).disabled = false;
       }
     };
-    count();
   }
   /* ---------- المحروقات (سيارة آب): رفع ملف الاستهلاك الشهري وتوزيعه على مركبات الأسطول وفروعها ---------- */
   const FUEL_COLS = [

@@ -137,13 +137,13 @@ window.SES_PAGES['branch-map'] = function (S) {
   }
   /* جزء من viewBranchMap: viewBranchMapPart2(draw, main, map, siteForm, vs);… */
   function viewBranchMapPart4(draw, empLabel, focus, main, map, query, vs) {
-    viewBranchMapPart2(draw, main, map, siteForm, vs);
     const reload = async (keepView) => {
       vs.d = await api('GET', '/api/branch-map');
       draw(!keepView);
     };
     /* نافذة إضافة / تعديل موقع: خريطة صغيرة لتحديد المكان بالضغط أو سحب الدبوس، أو لصق رابط جوجل / الإحداثيات */
     const siteForm = (...args) => branchMapSiteForm(empLabel, focus, map, reload, vs, ...args);
+    viewBranchMapPart2(draw, main, map, siteForm, vs);
     /* المناطق: الاسم واللون ومدير المنطقة */
     return viewBranchMapPart(draw, empLabel, focus, map, query, reload, siteForm, vs);
   }

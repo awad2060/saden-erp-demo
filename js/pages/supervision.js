@@ -4,7 +4,7 @@
 window.SES_PAGES = window.SES_PAGES || {};
 window.SES_PAGES['supervision'] = function (S) {
   const { $, $$, APP_TONES, SF, TABS, api, appHue, chip, dt, empEmpty, esc, head, icon, kv, setCrumb, shell, state, toast, today } = S;
-  /* ---------- المتابعة والإشراف: الفروع بالمناطق وملف كل فرع، تقارير الفروع، الشكاوى والتصعيد، النقل والانتداب، التقارير الدورية ---------- */
+  /* ---------- إدارة الفروع: الفروع بالمناطق وملف كل فرع، تقارير الفروع، الشكاوى والتصعيد، النقل والانتداب، التقارير الدورية ---------- */
   async function viewSupervision(query) {
     /* حالة الصفحة: ما يتغير بعد العرض (d، body) */
     const pageState = {};
@@ -241,7 +241,7 @@ window.SES_PAGES['supervision'] = function (S) {
       `<form><div class="grid2" style="grid-template-columns:repeat(3,1fr)">${F('الفرع', `<select class="in" name="branch">${brOpts(me.branch || query.branch)}</select>`)}
         ${F('التصنيف', `<select class="in" name="category">${['تشغيلية', 'موارد بشرية', 'معدات وصيانة', 'مالية', 'عملاء', 'سلامة', 'أخرى'].map((c) => `<option>${c}</option>`).join('')}</select>`)}${F('الأولوية', '<select class="in" name="priority"><option>متوسطة</option><option>منخفضة</option><option>عالية</option><option>عاجلة</option></select>')}</div>
         ${F('العنوان *', '<input class="in" name="title">', true)}${F('الوصف والتفاصيل *', ta('description', 'اشرح المشكلة وأثرها على العمل وما تم من محاولات لحلها', 5), true)}
-        <div class="hint">تصل الشكوى لمدير المنطقة، ويحلها أو يصعّدها لمدير المتابعة والإشراف.</div>${btns('📤 رفع')}</form>`,
+        <div class="hint">تصل الشكوى لمدير المنطقة، ويحلها أو يصعّدها لمدير إدارة الفروع.</div>${btns('📤 رفع')}</form>`,
       760,
     );
     $('form', bg).onsubmit = async (e) => {
@@ -401,8 +401,8 @@ window.SES_PAGES['supervision'] = function (S) {
       `<option value="">— اختر —</option>${st.users.map((u) => `<option value="${u.id}"${u.id === sel ? ' selected' : ''}>${esc(u.name)}${u.title ? ` — ${esc(u.title)}` : ''}</option>`).join('')}`;
     const draw = () => {
       const used = new Set(regs.flatMap((r) => r.branches));
-      box.innerHTML = `<h3 style="margin-top:0">${icon('settings')} إعدادات المتابعة والإشراف</h3>
-          <div class="grid2" style="grid-template-columns:1fr 1fr 1fr">${F('مدير المتابعة والإشراف', `<select class="in" id="spM1">${uOpt((st.cfg.mgrs || [])[0])}</select>`)}${F('مدير متابعة إضافي (اختياري)', `<select class="in" id="spM2">${uOpt((st.cfg.mgrs || [])[1])}</select>`)}${F('المدير التنفيذي (يستلم التقارير الدورية)', `<select class="in" id="spEx">${uOpt(st.cfg.exec)}</select>`)}</div>
+      box.innerHTML = `<h3 style="margin-top:0">${icon('settings')} إعدادات إدارة الفروع</h3>
+          <div class="grid2" style="grid-template-columns:1fr 1fr 1fr">${F('مدير إدارة الفروع', `<select class="in" id="spM1">${uOpt((st.cfg.mgrs || [])[0])}</select>`)}${F('مدير متابعة إضافي (اختياري)', `<select class="in" id="spM2">${uOpt((st.cfg.mgrs || [])[1])}</select>`)}${F('المدير التنفيذي (يستلم التقارير الدورية)', `<select class="in" id="spEx">${uOpt(st.cfg.exec)}</select>`)}</div>
           ${regs
             .map(
               (
@@ -493,7 +493,7 @@ window.SES_PAGES['supervision'] = function (S) {
         '#16a34a',
       )}
           ${stat('تقارير هذا الشهر', pageState.d.reports.filter((r) => String(r.at).startsWith(mon)).length, 'fileText', '#d97706')}${stat('شكاوى مفتوحة', pageState.d.issues.filter((x) => !['تم الحل', 'مغلقة'].includes(x.status)).length, 'alert', '#dc2626')}${canSup || me.hr ? stat('نقل / انتداب لدى الموارد البشرية', pageState.d.moves.filter((x) => x.status === 'لدى الموارد البشرية').length, 'forward', '#7c3aed') : ''}</div>
-        <div class="card"><div class="muted" style="margin-bottom:6px">مدير المتابعة والإشراف: <b>${esc(pageState.d.supMgrs.join('، ') || 'غير محدد')}</b> · المدير التنفيذي: <b>${esc(pageState.d.execName || 'غير محدد')}</b>${me.admin ? ' — <a href="#/supervision?tab=settings">الإعدادات</a>' : ''}</div>
+        <div class="card"><div class="muted" style="margin-bottom:6px">مدير إدارة الفروع: <b>${esc(pageState.d.supMgrs.join('، ') || 'غير محدد')}</b> · المدير التنفيذي: <b>${esc(pageState.d.execName || 'غير محدد')}</b>${me.admin ? ' — <a href="#/supervision?tab=settings">الإعدادات</a>' : ''}</div>
         ${groups.map((g) => `<h3 class="sp-reg">${icon('mapPin')} ${esc(g.name)} <small class="muted">${g.list.length} فرع${g.mgrName ? ` · مدير المنطقة: ${esc(g.mgrName)}` : ''}</small></h3><div class="ap-grid">${g.list.map(tile).join('')}</div>`).join('') || empEmpty('لا توجد فروع متاحة لك')}</div>`;
     }
   }
@@ -540,7 +540,7 @@ window.SES_PAGES['supervision'] = function (S) {
         ['الحالة', (x) => chip(x.status)],
       ])}</div>`;
     if (tab === 'settings') pageState.body = '<div class="card" id="spSet"><div class="empty">جاري التحميل...</div></div>';
-    main.innerHTML = `${head(tab === 'branch' ? `المتابعة والإشراف — فرع ${esc(query.branch)}` : 'المتابعة والإشراف', 'مدير الفرع ← مدير المنطقة ← مدير المتابعة والإشراف ← المدير التنفيذي', acts)}${tabsBar}${pageState.body}`;
+    main.innerHTML = `${head(tab === 'branch' ? `إدارة الفروع — فرع ${esc(query.branch)}` : 'إدارة الفروع', 'مدير الفرع ← مدير المنطقة ← مدير إدارة الفروع ← المدير التنفيذي', acts)}${tabsBar}${pageState.body}`;
     if (tab === 'settings') settings();
   }
   /* جزء من viewSupervision: main.addEventListener('click', (ev) => {… */
@@ -661,8 +661,8 @@ window.SES_PAGES['supervision'] = function (S) {
         const w = window.open('', '_blank');
         if (!w) return toast('اسمح بالنوافذ المنبثقة للطباعة', true);
         w.document
-          .write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${esc(x.serial)}</title><link rel="stylesheet" href="${location.origin}${location.pathname.replace(/[^/]*$/, '')}css/style.css"><style>@page{size:A4;margin:14mm} body{background:#fff;font-family:Tajawal,'Segoe UI',Tahoma,sans-serif;padding:0;margin:0} .hd{display:flex;gap:12px;align-items:center;border-bottom:3px solid #9b1c1c;padding-bottom:10px;margin-bottom:12px} .hd img{width:56px} .hd h1{margin:0;font-size:21px}</style></head><body>
-          <div class="hd"><img src="${location.origin}${location.pathname.replace(/[^/]*$/, '')}logo.png" alt=""><div><h1>${k === 'periodic' ? `تقرير المتابعة والإشراف ${esc(x.period)} — ${esc(x.label || '')}` : `تقرير ${esc(x.kind)} — ${esc(x.level === 'branch' ? `فرع ${x.branch}` : x.regionName)}`}</h1><div style="color:#64748b">${esc(x.serial)} — ${esc(dt(x.at))}</div></div></div>${vs.html}
+          .write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${esc(x.serial)}</title><link rel="stylesheet" href="${location.origin}/css/style.css"><style>@page{size:A4;margin:14mm} body{background:#fff;font-family:Tajawal,'Segoe UI',Tahoma,sans-serif;padding:0;margin:0} .hd{display:flex;gap:12px;align-items:center;border-bottom:3px solid #9b1c1c;padding-bottom:10px;margin-bottom:12px} .hd img{width:56px} .hd h1{margin:0;font-size:21px}</style></head><body>
+          <div class="hd"><img src="${location.origin}/logo.png" alt=""><div><h1>${k === 'periodic' ? `تقرير إدارة الفروع ${esc(x.period)} — ${esc(x.label || '')}` : `تقرير ${esc(x.kind)} — ${esc(x.level === 'branch' ? `فرع ${x.branch}` : x.regionName)}`}</h1><div style="color:#64748b">${esc(x.serial)} — ${esc(dt(x.at))}</div></div></div>${vs.html}
           <script>window.onload=function(){setTimeout(function(){window.print()},500)}<\/script></body></html>`);
         w.document.close();
       };

@@ -1,77 +1,37 @@
-/* ترجمة واجهة المنصة إلى الإنجليزية (الخطابات والمخالصات المطبوعة تبقى بالعربية)
- * - قاموس للعبارات الثابتة + قواعد للعبارات المتغيرة، ويُترجم نص الصفحة عند العرض
- * - لا يُترجم: الخطابات (.letter)، برنامج التصفية، وما يكتبه المستخدمون (الرسائل، الملاحظات، الأسماء) */
+/* ترجمة واجهة المنصة: العربية (الأصل)، والإنجليزية، والأوردو (الخطابات والمخالصات المطبوعة تبقى بالعربية)
+ * - النواة في i18n-core.js، والقواميس لكل لغة في window.SES_I18N[<اللغة>] = { D, P } (ملفات i18n-*.js تُحمَّل قبله)
+ * - يُترجم نص الصفحة عند العرض، ولا يُترجم: الخطابات (.letter)، وبرنامج التصفية، وما يكتبه المستخدمون */
 (function () {
   'use strict';
-  /* القاموس D والأنماط P: من ملفات i18n-dict*.js وi18n-more*.js (تُحمَّل قبله) */
-  const { D, P } = window.SES_I18N;
-  /* ---------- نهاية الإضافات ---------- */
+  const { LANGS, langOf, createTranslator } = window.SES_I18N_CORE;
   const AR = /[؀-ۿ]/;
-  const norm = (s) => String(s).replace(/\s+/g, ' ').trim();
-  const KEYS = Object.keys(D)
-    .map(norm)
-    .sort((a, b) => b.length - a.length);
-  const DN = {};
-  for (const k of Object.keys(D)) DN[norm(k)] = D[k];
-  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const SUB = KEYS.filter((k) => k.length > 2).map((k) => [new RegExp(`(^|[^\\u0600-\\u06FF])${esc(k)}(?![\\u0600-\\u06FF])`, 'g'), DN[k]]);
-  const cache = new Map();
-  function tr(text) {
-    if (!text || !AR.test(text)) return text;
-    if (cache.has(text)) return cache.get(text);
-    const lead = text.match(/^\s*/)[0],
-      tail = text.match(/\s*$/)[0];
-    let t = norm(text),
-      out = null;
-    const pre = /^([^؀-ۿ\w"(«]+)(?=[؀-ۿ])/.exec(t);
-    if (pre && pre[1].trim()) {
-      out = pre[1] + tr(t.slice(pre[1].length));
-      cache.set(text, lead + out + tail);
-      return lead + out + tail;
+  const lang = (() => {
+    try {
+      return langOf(localStorage.getItem('lang'));
+    } catch {
+      return 'ar';
     }
-    if (DN[t] !== undefined) out = DN[t];
-    if (out === null)
-      for (const [re, en] of P) {
-        const m = re.exec(t);
-        if (m) {
-          out = en.replace(/\$(\d)/g, (x, i) => tr(m[i] || ''));
-          break;
-        }
-      }
-    if (out === null) {
-      const seps = [' — ', ' ← ', ' → ', '، ', ' | ', ' - ', ': ', ' · '];
-      const sep = seps.find((s) => t.includes(s));
-      if (sep)
-        out = t
-          .split(sep)
-          .map((x) => tr(x))
-          .join(sep === '، ' ? ', ' : sep === ' ← ' ? ' → ' : sep);
-    }
-    if (out === null) {
-      out = t;
-      for (const [re, en] of SUB) out = out.replace(re, (m, p) => p + en);
-    }
-    out = lead + out + tail;
-    cache.set(text, out);
-    return out;
-  }
+  })();
+  const dict = (window.SES_I18N || {})[lang];
+  const tr = lang === 'ar' || !dict ? (s) => s : createTranslator({ ...dict, dir: LANGS[lang].dir });
+
   /* ما لا يُترجم: الخطابات المطبوعة، وما يكتبه المستخدمون */
   const SKIP =
     '.letter, iframe, script, style, textarea, .mail-body, .mail-prev, .nr-body, .nc-text, .np-txt span, [data-noi18n], .snap-val';
+  /* مربع النص: محتواه للمستخدم فلا يُترجم، أما تلميحه (placeholder / title) فواجهة تُترجم */
+  const SKIP_ATTRS = SKIP.replace('textarea, ', '');
   const done = new WeakMap(),
     attrDone = new WeakMap();
-  function trNode(n) {
-    if (n.nodeType === 3) {
-      const p = n.parentElement;
-      if (!p || p.closest(SKIP)) return;
-      const v = n.nodeValue;
-      if (done.get(n) === v || !AR.test(v)) return;
-      const out = tr(v);
-      done.set(n, out);
-      if (out !== v) n.nodeValue = out;
-      return;
-    }
-    if (n.nodeType !== 1 || n.closest(SKIP)) return;
+  function trText(n) {
+    const p = n.parentElement;
+    if (!p || p.closest(SKIP)) return;
+    const v = n.nodeValue;
+    if (done.get(n) === v || !AR.test(v)) return;
+    const out = tr(v);
+    done.set(n, out);
+    if (out !== v) n.nodeValue = out;
+  }
+  function trAttrs(n) {
     for (const a of ['placeholder', 'title', 'aria-label']) {
       const v = n.getAttribute(a);
       if (!v || !AR.test(v)) continue;
@@ -82,52 +42,56 @@
       attrDone.set(n, seen);
       if (out !== v) n.setAttribute(a, out);
     }
+  }
+  function trNode(n) {
+    if (n.nodeType === 3) return trText(n);
+    if (n.nodeType !== 1) return;
+    if (n.closest(SKIP)) {
+      if (!n.closest(SKIP_ATTRS)) trAttrs(n);
+      return;
+    }
+    trAttrs(n);
     if (n.tagName === 'OPTION' && !n.hasAttribute('value')) n.setAttribute('value', n.textContent);
     if (n.tagName === 'INPUT' && (n.type === 'button' || n.type === 'submit') && AR.test(n.value)) n.value = tr(n.value);
     for (const c of n.childNodes) trNode(c);
   }
-  let obs = null;
-  const I18N = {
-    lang: (() => {
-      try {
-        return localStorage.getItem('lang') === 'en' ? 'en' : 'ar';
-      } catch {
-        return 'ar';
+  /* ترجمة الصفحة الآن وكل ما يُضاف إليها بعد ذلك */
+  function watch() {
+    trNode(document.body);
+    new MutationObserver((ms) => {
+      for (const m of ms) {
+        if (m.type === 'characterData') trNode(m.target);
+        else m.addedNodes.forEach(trNode);
+        if (m.type === 'attributes') trNode(m.target);
       }
-    })(),
-    tr: (s) => (I18N.lang === 'en' ? tr(s) : s),
-    set(lang) {
+    }).observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['placeholder', 'title', 'aria-label'],
+    });
+  }
+  const I18N = {
+    lang,
+    LANGS,
+    tr,
+    set(l) {
       try {
-        localStorage.setItem('lang', lang);
+        localStorage.setItem('lang', langOf(l));
       } catch {
         /* تجاهل */
       }
       location.reload();
     },
     start() {
-      if (I18N.lang !== 'en') return;
-      document.documentElement.lang = 'en';
-      document.documentElement.dir = 'ltr';
-      document.documentElement.classList.add('lang-en');
-      const run = () => {
-        trNode(document.body);
-        obs = new MutationObserver((ms) => {
-          for (const m of ms) {
-            if (m.type === 'characterData') trNode(m.target);
-            else m.addedNodes.forEach(trNode);
-            if (m.type === 'attributes') trNode(m.target);
-          }
-        });
-        obs.observe(document.body, {
-          childList: true,
-          subtree: true,
-          characterData: true,
-          attributes: true,
-          attributeFilter: ['placeholder', 'title'],
-        });
-      };
-      if (document.body) run();
-      else document.addEventListener('DOMContentLoaded', run);
+      if (lang === 'ar') return;
+      const html = document.documentElement;
+      html.lang = lang;
+      html.dir = LANGS[lang].dir;
+      html.classList.add(`lang-${lang}`);
+      if (document.body) watch();
+      else document.addEventListener('DOMContentLoaded', watch);
       const wrap =
         (fn) =>
         (msg, ...rest) =>

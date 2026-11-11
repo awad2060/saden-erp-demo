@@ -244,8 +244,23 @@
       e.preventDefault();
       document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text/plain'));
     });
-    /* حالة أزرار التنسيق حسب مكان المؤشر */
-    const mark = () =>
+    const mark = snMarker(box);
+    t.addEventListener('keyup', mark);
+    t.addEventListener('mouseup', mark);
+    t.addEventListener('focus', mark);
+    snWireFmt(box, t, put, mark);
+    snWireSize(box, n, t, put);
+    t.addEventListener('blur', () => {
+      if (sn.pend[n.id]) {
+        clearTimeout(sn.timers[n.id]);
+        snFlush(n);
+      }
+    });
+    snWirePick(box, n, onChange);
+  }
+  /* حالة أزرار التنسيق حسب مكان المؤشر */
+  function snMarker(box) {
+    return () =>
       $$('[data-sn-f]', box).forEach((b) => {
         try {
           b.classList.toggle(
@@ -257,9 +272,9 @@
           /* تجاهل */
         }
       });
-    t.addEventListener('keyup', mark);
-    t.addEventListener('mouseup', mark);
-    t.addEventListener('focus', mark);
+  }
+  /* أزرار التنسيق: عريض، مائل، قوائم، تظليل... وزر الحجم يفتح قائمة الأحجام */
+  function snWireFmt(box, t, put, mark) {
     $$('[data-sn-f]', box).forEach((b) => {
       b.addEventListener('mousedown', (e) => e.preventDefault());
       b.onclick = () => {
@@ -283,6 +298,8 @@
         mark();
       };
     });
+  }
+  function snWireSize(box, n, t, put) {
     /* حجم الخط: كلام محدد ← يتغير حجمه هو، وإلا ← حجم الملاحظة كلها */
     $$('[data-px]', box).forEach((b) => {
       b.addEventListener('mousedown', (e) => e.preventDefault());
@@ -312,12 +329,9 @@
         t.focus();
       };
     });
-    t.addEventListener('blur', () => {
-      if (sn.pend[n.id]) {
-        clearTimeout(sn.timers[n.id]);
-        snFlush(n);
-      }
-    });
+  }
+  /* لون الملاحظة وأهميتها، وحذفها */
+  function snWirePick(box, n, onChange) {
     $('[data-sn-col]', box).onclick = () => {
       $('.sn-cols', box).hidden = !$('.sn-cols', box).hidden;
       $('.sn-prs', box).hidden = true;
@@ -396,87 +410,97 @@
         },
         true,
       );
-      $('[data-sn-x]', box).onclick = () => {
-        snSave(n, { open: false }, 50);
-        snRender();
-        snNavBadge();
-      };
-      $('[data-sn-new]', box).onclick = async () => {
-        const m = await snNew({ color: n.color });
-        snRender();
-        snNavBadge();
-        const t = $(`[data-sn-t="${m.id}"]`);
-        if (t) t.focus();
-      };
-      /* السحب من شريط الملاحظة */
-      const bar = $('[data-sn-drag]', box);
-      bar.addEventListener('pointerdown', (e) => {
-        if (e.target.closest('button, a')) return;
-        e.preventDefault();
-        const r = box.getBoundingClientRect(),
-          dx = e.clientX - r.left,
-          dy = e.clientY - r.top;
-        bar.setPointerCapture(e.pointerId);
-        const mv = (ev) => {
-          box.style.left = `${Math.max(0, Math.min(ev.clientX - dx, innerWidth - 60))}px`;
-          box.style.top = `${Math.max(48, Math.min(ev.clientY - dy, innerHeight - 40))}px`;
-        };
-        const up = () => {
-          bar.removeEventListener('pointermove', mv);
-          bar.removeEventListener('pointerup', up);
-          snSave(n, { x: parseInt(box.style.left, 10), y: parseInt(box.style.top, 10) }, 200);
-        };
-        bar.addEventListener('pointermove', mv);
-        bar.addEventListener('pointerup', up);
-      });
-      /* تغيير الحجم من الركن */
-      /* تغيير الحجم من أي اتجاه: الحواف الأربع والأركان الأربعة */
-      $$('[data-rz]', box).forEach((rz) =>
-        rz.addEventListener('pointerdown', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const d = rz.dataset.rz,
-            x0 = e.clientX,
-            y0 = e.clientY,
-            w0 = box.offsetWidth,
-            h0 = box.offsetHeight,
-            l0 = box.offsetLeft,
-            t0 = box.offsetTop;
-          box.style.zIndex = ++sn.z;
-          rz.setPointerCapture(e.pointerId);
-          const mv = (ev) => {
-            const dx = ev.clientX - x0,
-              dy = ev.clientY - y0;
-            let w = w0,
-              h = h0,
-              l = l0,
-              t = t0;
-            if (d.includes('e')) w = Math.min(w0 + dx, innerWidth - l0 - 4);
-            if (d.includes('w')) {
-              w = Math.min(w0 - dx, l0 + w0 - 4);
-            }
-            if (d.includes('s')) h = Math.min(h0 + dy, innerHeight - t0 - 4);
-            if (d.includes('n')) h = Math.min(h0 - dy, t0 + h0 - 48);
-            w = Math.max(180, w);
-            h = Math.max(150, h);
-            if (d.includes('w')) l = l0 + w0 - w;
-            if (d.includes('n')) t = t0 + h0 - h;
-            Object.assign(box.style, { width: `${w}px`, height: `${h}px`, left: `${l}px`, top: `${t}px` });
-          };
-          const up = () => {
-            rz.removeEventListener('pointermove', mv);
-            rz.removeEventListener('pointerup', up);
-            snSave(n, { x: box.offsetLeft, y: box.offsetTop, w: box.offsetWidth, h: box.offsetHeight }, 200);
-          };
-          rz.addEventListener('pointermove', mv);
-          rz.addEventListener('pointerup', up);
-        }),
-      );
+      snFloatBtns(box, n);
+      snDrag(box, n);
+      snResize(box, n);
     }
     if (keep) {
       const t = $(`[data-sn-t="${keep}"]`, L);
       if (t) snCaretEnd(t);
     }
+  }
+  /* أزرار الملاحظة العائمة: إغلاق، وملاحظة جديدة بنفس اللون */
+  function snFloatBtns(box, n) {
+    $('[data-sn-x]', box).onclick = () => {
+      snSave(n, { open: false }, 50);
+      snRender();
+      snNavBadge();
+    };
+    $('[data-sn-new]', box).onclick = async () => {
+      const m = await snNew({ color: n.color });
+      snRender();
+      snNavBadge();
+      const t = $(`[data-sn-t="${m.id}"]`);
+      if (t) t.focus();
+    };
+  }
+  function snDrag(box, n) {
+    /* السحب من شريط الملاحظة */
+    const bar = $('[data-sn-drag]', box);
+    bar.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button, a')) return;
+      e.preventDefault();
+      const r = box.getBoundingClientRect(),
+        dx = e.clientX - r.left,
+        dy = e.clientY - r.top;
+      bar.setPointerCapture(e.pointerId);
+      const mv = (ev) => {
+        box.style.left = `${Math.max(0, Math.min(ev.clientX - dx, innerWidth - 60))}px`;
+        box.style.top = `${Math.max(48, Math.min(ev.clientY - dy, innerHeight - 40))}px`;
+      };
+      const up = () => {
+        bar.removeEventListener('pointermove', mv);
+        bar.removeEventListener('pointerup', up);
+        snSave(n, { x: parseInt(box.style.left, 10), y: parseInt(box.style.top, 10) }, 200);
+      };
+      bar.addEventListener('pointermove', mv);
+      bar.addEventListener('pointerup', up);
+    });
+  }
+  function snResize(box, n) {
+    /* تغيير الحجم من الركن */
+    /* تغيير الحجم من أي اتجاه: الحواف الأربع والأركان الأربعة */
+    $$('[data-rz]', box).forEach((rz) =>
+      rz.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const d = rz.dataset.rz,
+          x0 = e.clientX,
+          y0 = e.clientY,
+          w0 = box.offsetWidth,
+          h0 = box.offsetHeight,
+          l0 = box.offsetLeft,
+          t0 = box.offsetTop;
+        box.style.zIndex = ++sn.z;
+        rz.setPointerCapture(e.pointerId);
+        const mv = (ev) => {
+          const dx = ev.clientX - x0,
+            dy = ev.clientY - y0;
+          let w = w0,
+            h = h0,
+            l = l0,
+            t = t0;
+          if (d.includes('e')) w = Math.min(w0 + dx, innerWidth - l0 - 4);
+          if (d.includes('w')) {
+            w = Math.min(w0 - dx, l0 + w0 - 4);
+          }
+          if (d.includes('s')) h = Math.min(h0 + dy, innerHeight - t0 - 4);
+          if (d.includes('n')) h = Math.min(h0 - dy, t0 + h0 - 48);
+          w = Math.max(180, w);
+          h = Math.max(150, h);
+          if (d.includes('w')) l = l0 + w0 - w;
+          if (d.includes('n')) t = t0 + h0 - h;
+          Object.assign(box.style, { width: `${w}px`, height: `${h}px`, left: `${l}px`, top: `${t}px` });
+        };
+        const up = () => {
+          rz.removeEventListener('pointermove', mv);
+          rz.removeEventListener('pointerup', up);
+          snSave(n, { x: box.offsetLeft, y: box.offsetTop, w: box.offsetWidth, h: box.offsetHeight }, 200);
+        };
+        rz.addEventListener('pointermove', mv);
+        rz.addEventListener('pointerup', up);
+      }),
+    );
   }
   window.addEventListener('hashchange', () =>
     setTimeout(() => {
@@ -578,7 +602,6 @@
     if (a)
       a.onclick = (e) => {
         e.preventDefault();
-        if (innerWidth < 900) $('#side').classList.remove('open');
         snMenu(a);
       };
     if (S.SOLO) return;

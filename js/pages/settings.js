@@ -44,6 +44,9 @@ window.SES_PAGES['settings'] = function (S) {
   /* أجزاء صفحة الإعدادات (3) (settings-kit-3.js) */
   const { otpCard, settingsOrgDiv, settingsCountries, contrastWhite } = window.SES_PAGE_KITS['settings-3'](S, {});
 
+  /* «المسميات والصلاحيات» صارت كروت الفئات داخل «المستخدمون»: لا تظهر وحدها في القائمة لمن يرى المستخدمين */
+  const navTabs = (tabs) => (tabs.some(([k]) => k === 'users') ? tabs.filter(([k]) => k !== 'roles') : tabs);
+  const tabOn = (k, tab) => k === tab || (k === 'users' && tab === 'roles');
   async function viewSettings(tab, sub) {
     if (tab === 'trash') {
       location.hash = '#/trash';
@@ -59,14 +62,19 @@ window.SES_PAGES['settings'] = function (S) {
     const main = shell('<div class="empty">جاري التحميل...</div>', '#/settings');
     const [settings, users] = await Promise.all([api('GET', '/api/admin/settings'), api('GET', '/api/admin/users')]);
     main.innerHTML = `${head('الإعدادات', 'إدارة المستخدمين ومسارات الاعتماد وإعدادات النظام')}
-      <div class="set-wrap"><nav class="set-nav" aria-label="أقسام الإعدادات">${myTabs.map(([k, t]) => `<a href="#/settings/${k}" class="${k === tab ? 'on' : ''}"${k === tab ? ' aria-current="page"' : ''}>${icon(TAB_ICONS[k] || 'settings')}<span>${t}</span></a>`).join('')}</nav>
+      <div class="set-wrap"><nav class="set-nav" aria-label="أقسام الإعدادات">${navTabs(myTabs)
+        .map(
+          ([k, t]) =>
+            `<a href="#/settings/${k}" class="${tabOn(k, tab) ? 'on' : ''}"${tabOn(k, tab) ? ' aria-current="page"' : ''}>${icon(TAB_ICONS[k] || 'settings')}<span>${t}</span></a>`,
+        )
+        .join('')}</nav>
       <div id="tabBody" class="set-body"></div></div>`;
     /* على الشاشات الصغيرة القائمة شريط أفقي: يظهر فيه التبويب المفتوح */
     const navOn = $('.set-nav a.on');
     if (navOn && innerWidth <= 900) navOn.scrollIntoView({ inline: 'center', block: 'nearest' });
     const body = $('#tabBody');
     const saveSettings = (...args) => settingsSaveSettings(...args);
-    await viewSettingsPart(body, saveSettings, settings, tab, users);
+    await viewSettingsPart(body, saveSettings, settings, tab, users, sub);
     if (tab === 'hr') settingsHr(body, settings, saveSettings, sub);
     if (tab === 'tools') await settingsTools(body, saveSettings);
     await viewSettingsPart2(body, saveSettings, settings, tab);
@@ -181,11 +189,7 @@ window.SES_PAGES['settings'] = function (S) {
     ) => `<div class="row tf-ap" style="gap:8px;margin-bottom:6px"><select class="in" data-t="user" style="flex:1">${opts(x.userId)}</select>
         <input class="in" data-t="label" style="flex:1" placeholder="الوصف (مثال: المدير المالي)" value="${esc(x.label || '')}"><button type="button" class="btn sm ghost" data-t="rm" title="حذف">✕</button></div>`;
     const apRows = $('#tfApRows');
-    const apInit = Array.isArray(tfl.approvers)
-      ? tfl.approvers
-      : tfl.monitor
-        ? [{ userId: tfl.monitor, label: 'مدير المتابعة والإشراف' }]
-        : [];
+    const apInit = Array.isArray(tfl.approvers) ? tfl.approvers : tfl.monitor ? [{ userId: tfl.monitor, label: 'مدير إدارة الفروع' }] : [];
     apRows.innerHTML = (apInit.length ? apInit : [{}]).map(apRow).join('');
     $('#tfApAdd').onclick = () => apRows.insertAdjacentHTML('beforeend', apRow({}));
     apRows.onclick = (e) => {
@@ -416,12 +420,13 @@ window.SES_PAGES['settings'] = function (S) {
     settingsOversight,
     settingsBackup,
     settingsEmail,
-    settingsRoles,
     settingsCalendar,
     settingsHrPart,
     renderSettingsHr,
     settingsHrDraw,
   } = window.SES_PAGE_KITS['settings'](S, { settingsToolsPart, viewSettings });
+  /* فئات المستخدمين (المسميات) وصفحة صلاحياتها (settings-roles.js) */
+  const { settingsRoles, categoryCards } = window.SES_PAGE_KITS['settings-roles'](S, { viewSettings });
   /* أجزاء صفحة الإعدادات (4) (settings-kit-4.js) */
   const {
     viewSettingsPart,
@@ -455,6 +460,7 @@ window.SES_PAGES['settings'] = function (S) {
     settingsHrPart,
     settingsOrgDiv,
     settingsRoles,
+    categoryCards,
     viewSettings,
   });
 

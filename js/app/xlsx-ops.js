@@ -161,7 +161,8 @@
     for (i++; i; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + ((i - 1) % 26)) + s;
     return s;
   };
-  /* rows: صفوف القيم، والصف الأول عناوين بخط عريض. أو قائمة أوراق [{ name, rows }] لملف بعدة أوراق */
+  /* rows: صفوف القيم، والصف الأول عناوين بخط عريض. أو قائمة أوراق [{ name, rows }] لملف بعدة أوراق؛
+   * وللورقة اختيارياً widths (عرض كل عمود) وheads (أرقام صفوف أخرى تُكتب كعناوين) — لورقة الشرح في نماذج الرفع */
   function downloadXlsx(name, rows, sheet = 'Sheet1') {
     const sheets = rows.length && rows[0] && Array.isArray(rows[0].rows) ? rows : [{ name: sheet, rows }];
     /* أسماء الأوراق: حتى 31 حرفاً، بدون الرموز الممنوعة في Excel، وبلا تكرار */
@@ -176,9 +177,13 @@
       used.add(n);
       return n;
     });
-    const sheetXmlOf = (rows) => {
+    const sheetXmlOf = ({ rows, widths, heads = [] }) => {
       const width = Math.max(1, ...rows.map((r) => r.length));
-      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView rightToLeft="1" workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="${width}" width="20" customWidth="1"/></cols><sheetData>${rows.map((r, i) => `<row r="${i + 1}">${r.map((v, k) => (v === '' || v == null ? '' : typeof v === 'number' ? `<c r="${colName(k)}${i + 1}"${i ? '' : ' s="1"'}><v>${v}</v></c>` : `<c r="${colName(k)}${i + 1}" t="inlineStr"${i ? '' : ' s="1"'}><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>`)).join('')}</row>`).join('')}</sheetData></worksheet>`;
+      const head = (i) => (i === 0 || heads.includes(i) ? ' s="1"' : '');
+      const colsXml = widths
+        ? widths.map((w, k) => `<col min="${k + 1}" max="${k + 1}" width="${w}" customWidth="1"/>`).join('')
+        : `<col min="1" max="${width}" width="20" customWidth="1"/>`;
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView rightToLeft="1" workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${colsXml}</cols><sheetData>${rows.map((r, i) => `<row r="${i + 1}">${r.map((v, k) => (v === '' || v == null ? '' : typeof v === 'number' ? `<c r="${colName(k)}${i + 1}"${head(i)}><v>${v}</v></c>` : `<c r="${colName(k)}${i + 1}" t="inlineStr"${head(i)}><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>`)).join('')}</row>`).join('')}</sheetData></worksheet>`;
     };
     const blob = zipStore([
       [
@@ -215,7 +220,7 @@
         'xl/styles.xml',
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE2E8F0"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>',
       ],
-      ...sheets.map((s, i) => [`xl/worksheets/sheet${i + 1}.xml`, sheetXmlOf(s.rows)]),
+      ...sheets.map((s, i) => [`xl/worksheets/sheet${i + 1}.xml`, sheetXmlOf(s)]),
     ]);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -337,6 +342,16 @@
     m = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/.exec(x);
     if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
     return x;
+  };
+  /* الوقت من خانة وقت في Excel يُقرأ كسراً من اليوم (0.6041666 = 14:30)؛ والنص مثل 14:30:00 يُختصر إلى 14:30 */
+  const normTime = (s) => {
+    const x = String(s == null ? '' : s).trim();
+    if (/^0?\.\d+$/.test(x)) {
+      const m = Math.round(Number(x) * 1440) % 1440;
+      return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+    }
+    const t = /^(\d{1,2}):(\d{2})(:\d{2})?$/.exec(x);
+    return t ? `${t[1].padStart(2, '0')}:${t[2]}` : x;
   };
   function parseCsv(text) {
     const rows = [];
@@ -537,6 +552,7 @@
     colName,
     XS_STYLES,
     normDate,
+    normTime,
     opsDoc,
     kv,
     daysBadge,

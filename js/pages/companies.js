@@ -72,7 +72,11 @@ window.SES_PAGES['companies'] = function (S) {
       const name = $('#coNewName', box).value.trim();
       if (!name) return;
       try {
-        await api('POST', '/api/group/admin/company', { name, nameEn: $('#coNewEn', box).value });
+        await api('POST', '/api/group/admin/company', {
+          name,
+          nameEn: $('#coNewEn', box).value,
+          country: $('#coNewCountry', box) ? $('#coNewCountry', box).value : 'SA',
+        });
         toast('تمت إضافة الشركة');
         viewCompanies(query);
       } catch (err) {
@@ -117,7 +121,7 @@ window.SES_PAGES['companies'] = function (S) {
           ${c.logo ? '<span class="chip ok">شعار خاص</span>' : ''}${c.header ? '<span class="chip ok">ترويسة خاصة</span>' : ''}</td></tr>`,
         )
         .join('')}</tbody></table></div>
-      <div class="row" style="gap:8px;margin:8px 0 18px"><input class="in" id="coNewName" placeholder="اسم شركة جديدة" style="max-width:280px"><input class="in" id="coNewEn" placeholder="English name" dir="ltr" style="max-width:220px"><button class="btn" id="coAdd">➕ إضافة شركة</button></div>
+      <div class="row" style="gap:8px;margin:8px 0 18px"><input class="in" id="coNewName" placeholder="اسم شركة جديدة" style="max-width:280px"><input class="in" id="coNewEn" placeholder="English name" dir="ltr" style="max-width:220px">${(g.countries || []).length ? `<label class="row" style="gap:6px">الدولة<select class="in" id="coNewCountry" style="max-width:220px" title="عملة الشركة الأساسية عملة دولتها">${g.countries.map((k) => `<option value="${esc(k.code)}">${esc(k.name_ar)} — ${esc(k.currency)}</option>`).join('')}</select></label>` : ''}<button class="btn" id="coAdd">➕ إضافة شركة</button></div>
       <h3>أعضاء المجموعة</h3><div class="hint">العضو يرى شاشة شركات المجموعة ويدخل الشركات المحددة له بنفس اسم المستخدم وكلمة المرور (من شركته الأم). «يدير المجموعة» يضيف الشركات والأعضاء. غير الأعضاء يدخلون شركتهم مباشرة.</div>
       <datalist id="gmUsers">${g.users.map((u) => `<option value="${esc(u.username)}">${esc(u.name)}${u.title ? ` — ${esc(u.title)}` : ''}</option>`).join('')}</datalist>
       <div class="tbl-wrap"><table class="tbl gm-t"><thead><tr><th>اسم المستخدم</th><th>شركته الأم</th><th>الشركات المسموحة</th><th>الإدارة</th><th></th></tr></thead><tbody id="gmBody">${g.members.map(memRow).join('')}</tbody></table></div>

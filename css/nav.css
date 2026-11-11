@@ -1,0 +1,157 @@
+/* ================= التنقل بلا قائمة جانبية (قرار الإدارة 2026-11) =================
+   التنقل كله من صفحة التطبيقات وزرها في الشريط العلوي، ومسار الصفحة تحته (navCrumb).
+   يُحمَّل بعد style.css: قواعد القائمة الجانبية القديمة فيه (.side و.side-open و.side-off) لم يعد لها عنصر في الصفحة. */
+
+/* الصفحة عمود واحد بعرض الشاشة كله */
+.shell {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* شريط الجوال: رابط صفحة التطبيقات (بدل زر فتح القائمة الجانبية) — مساحة ضغط 44px */
+.mobile-bar #menuBtn {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  color: #fff;
+}
+.mobile-bar #menuBtn .i {
+  width: 24px;
+  height: 24px;
+}
+
+/* قائمة الحساب (الاسم وسهمه في الشريط العلوي): حسابي، والوضع الداكن، والإعدادات، وتسجيل الخروج */
+.tb-um {
+  position: relative;
+  display: inline-flex;
+}
+button.tb-user {
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+  text-align: start;
+  min-height: 44px;
+}
+.tb-chev {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+.tb-chev .i {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.15s;
+}
+.tb-user[aria-expanded='true'] .tb-chev .i {
+  transform: rotate(180deg);
+}
+.um-menu {
+  min-width: 240px;
+  max-width: 280px;
+}
+.um-menu .co-mi {
+  min-height: 44px;
+  width: 100%;
+}
+.um-menu .co-mi > .i,
+.um-menu .um-ic .i {
+  width: 20px;
+  height: 20px;
+  color: var(--muted);
+}
+.um-ic {
+  display: grid;
+  place-items: center;
+}
+/* مفتاح تشغيل الوضع الداكن (يعكس aria-checked) */
+.um-sw {
+  flex: none;
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--border);
+  transition: background-color 0.15s;
+}
+.um-sw::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  inset-inline-start: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: inset-inline-start 0.15s;
+}
+[aria-checked='true'] > .um-sw {
+  background: var(--brand);
+}
+[aria-checked='true'] > .um-sw::after {
+  inset-inline-start: 18px;
+}
+.um-menu .um-out {
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 10px 10px;
+  margin-top: 4px;
+}
+.um-menu .um-out,
+.um-menu .um-out > .i {
+  color: var(--bad);
+}
+
+/* عداد الدخول على النظام: ثابت أسفل كل الصفحات ناحية اليمين (والمساعد في الركن المقابل)؛ وعلى الجوال في آخر الصفحة */
+.logins-dock {
+  position: fixed;
+  bottom: 16px;
+  inset-inline-start: 16px;
+  z-index: 5;
+}
+.logins-dock:empty {
+  display: none;
+}
+@media (max-width: 700px) {
+  .logins-dock {
+    position: static;
+    display: flex;
+    padding: 0 16px 16px;
+  }
+}
+.ap-logins {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  text-align: center;
+  padding: 0;
+  min-height: 44px;
+  box-shadow: var(--shadow);
+}
+.ap-logins:hover {
+  border-color: var(--brand-ring);
+}
+.ap-logins span {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 14px;
+}
+.ap-logins span + span {
+  border-inline-start: 1px solid var(--border);
+}
+.ap-logins b {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.ap-logins small {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.3;
+}

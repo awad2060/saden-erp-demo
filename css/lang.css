@@ -1,0 +1,57 @@
+/* ================= اللغات (public/js/i18n-core.js و i18n.js) =================
+   الأوردو من اليمين لليسار بخط يدعم حروفها (ٹ ڈ ڑ ں ے ہ ھ ۓ) — Tajawal لا يدعمها؛ والإنجليزية في style.css (html.lang-en). */
+
+/* خط الأوردو: للصفحة كلها في لغة الأوردو، ولاسم «اردو» في قائمة اختيار اللغة في أي لغة */
+html.lang-ur body,
+html.lang-ur :is(button, input, select, textarea),
+:lang(ur) {
+  font-family: 'Noto Naskh Arabic', Tajawal, 'Segoe UI', Tahoma, sans-serif;
+}
+/* خط النسخ أطول من Tajawal: مسافة سطر أوسع قليلاً حتى لا تتلامس الحروف */
+html.lang-ur body {
+  line-height: 1.75;
+}
+
+/* قائمة الحساب ← اللغة: عنوان، ثم اللغات الثلاث بأسمائها، وعلامة ✓ على الحالية */
+.um-lang {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin: 4px 0;
+  padding: 4px 0;
+}
+.um-sec {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.um-sec .i {
+  width: 18px;
+  height: 18px;
+}
+.um-lang .co-mi {
+  padding-inline-start: 38px;
+}
+.um-ck {
+  display: grid;
+  place-items: center;
+  visibility: hidden;
+  color: var(--brand-ic, var(--brand));
+}
+.um-ck .i {
+  width: 18px;
+  height: 18px;
+}
+[aria-checked='true'] > .um-ck {
+  visibility: visible;
+}
+
+/* شاشة الدخول: قائمة اختيار اللغة */
+select.lang-login {
+  width: auto;
+  min-height: 40px;
+  padding-inline: 10px 28px;
+}

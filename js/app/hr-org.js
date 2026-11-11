@@ -47,25 +47,40 @@
     const c = SF.flagOf(nat);
     return c ? `<img class="flag" src="flags/${c}.svg" alt="" title="${esc(nat)}" loading="lazy">` : '';
   };
+  /* الكارت على شكل بطاقة هوية: أخضر «مواطن» للسعودي، وأزرق «مقيم» للمقيم */
   const empCard = (e, editor) => {
-    const al = e.status !== 'غير نشط' && e.iqamaEnd !== undefined && empAlert(e);
-    /* الكارت على شكل بطاقة هوية: أخضر «مواطن» للسعودي، وأزرق «مقيم» للمقيم */
     const sa = SF.empCitizen(e);
-    /* تاريخ انتهاء الهوية / الإقامة: أحمر إذا انتهى، وأصفر إذا بقي 60 يوماً أو أقل */
-    const xd = /^\d{4}-\d{2}-\d{2}$/.test(e.iqamaEnd || '') ? SF.daysBetween(today(), e.iqamaEnd) : null;
-    const row = (l, v, cls = '') => `<div class="idc-r${cls}"><small>${l}</small><b>${v}</b></div>`;
     return `<div class="emp-card idc ${sa ? 'sa' : 'res'}">
       <div class="idc-h"><span class="idc-type">${icon('idCard')}${sa ? 'مواطن' : 'مقيم'}</span><span class="idc-co">شركة سادن</span></div>
       <div class="idc-b">${empPhoto(e)}
-        <div class="idc-f"><a class="emp-name" href="#/employee/${e.id}" title="${esc(`${e.empNo ? `${e.empNo} | ` : ''}${e.nameAr}`)}">${e.empNo ? `<span class="idc-eno" title="الرقم الوظيفي">${esc(e.empNo)}</span> | ` : ''}${esc(e.nameAr)}</a><div class="emp-title">${esc(e.title || '—')}</div>
-          <div class="idc-no" title="رقم الهوية / الإقامة"><small>${sa ? 'رقم الهوية' : 'رقم الإقامة'}</small><bdi dir="ltr">${esc(e.iqama || '—')}</bdi></div>
-          ${sa ? '' : `<div class="idc-no idc-pp" title="رقم جواز السفر"><small>رقم الجواز</small><bdi dir="ltr">${esc(e.passport || '—')}</bdi></div>`}</div></div>
-      <div class="idc-g">${row('الجنسية', `${natFlag(e.nationality || (sa ? 'سعودي' : ''))}${esc(e.nationality || (sa ? 'سعودي' : '—'))}`)}${row(sa ? 'انتهاء الهوية' : 'انتهاء الإقامة', e.iqamaEnd ? `<span title="${xd < 0 ? `منتهية منذ ${-xd} يوم` : `باقٍ ${xd} يوم`}">${esc(SF.fmtDate(e.iqamaEnd))}</span>` : '—', xd === null ? '' : xd < 0 ? ' exp' : xd <= 60 ? ' soon' : '')}
-        ${row('الفرع', esc(e.branch || '—'))}${row('الإدارة', esc(e.department || '—'))}
-        ${row('رقم الجوال', `<bdi dir="ltr">${esc(e.phone || '—')}</bdi>`)}${row('الكفالة', `<span title="${esc(e.kafala || '')}">${esc(e.kafala || '—')}</span>`, ' full')}${row('الإيميل', `<span title="${esc(e.email || '')}">${esc(e.email || '—')}</span>`, ' full')}</div>
-      <div class="emp-foot"><span class="row" style="gap:6px;flex-wrap:wrap">${e.leaveBal != null ? `<span class="emp-leave${e.leaveBal < 0 ? ' neg' : ''}" title="رصيد الإجازة السنوية المتاح (بنفس طريقة التصفية)">${icon('bookOpen')} رصيد الإجازات: <b>${esc(Number(e.leaveBal).toFixed(2))}</b> يوم</span>` : ''}${al ? `<span class="chip ${al.days < 0 ? 'rejected' : 'pending'}" title="${esc(SF.fmtDate(al.date))}">${esc(al.l)}: ${esc(docLeft(al))}</span>` : ''}</span>
-        <span class="row" style="gap:4px">${e.uid && e.uid !== state.user.id ? `${can('chat') ? `<button class="btn sm ghost" data-echat="${e.uid}" title="دردشة سريعة">💬</button>` : ''}${can('mail') ? `<a class="btn sm ghost" href="#/mail/new?to=${e.uid}" title="رسالة بريد">✉️</a>` : ''}${editor ? `<button class="btn sm ghost${e.mobBound ? '' : ' dim'}" data-eunbind="${e.id}" title="${e.mobBound ? 'إعادة تعيين الهاتف (إلغاء ربط الجوال الحالي)' : 'لا يوجد جوال مربوط بحسابه'}">📱</button>` : ''}` : ''}${editor ? `<button class="btn sm ghost" data-eed="${e.id}" title="تعديل">✏️</button>` : ''}<a class="btn sm ghost" href="#/employee/${e.id}" title="عرض ملف الموظف">👁</a></span></div></div>`;
+        ${empCardId(e, sa)}</div>
+      <div class="idc-g">${empCardGrid(e, sa)}</div>
+      ${empCardFoot(e, editor)}</div>`;
   };
+  /* الاسم والرقم الوظيفي والمسمى، ورقم الهوية / الإقامة (والجواز للمقيم) */
+  const empCardId = (e, sa) =>
+    `<div class="idc-f"><a class="emp-name" href="#/employee/${e.id}" title="${esc(`${e.empNo ? `${e.empNo} | ` : ''}${e.nameAr}`)}">${e.empNo ? `<span class="idc-eno" title="الرقم الوظيفي">${esc(e.empNo)}</span> | ` : ''}${esc(e.nameAr)}</a><div class="emp-title">${esc(e.title || '—')}</div>
+          <div class="idc-no" title="رقم الهوية / الإقامة"><small>${sa ? 'رقم الهوية' : 'رقم الإقامة'}</small><bdi dir="ltr">${esc(e.iqama || '—')}</bdi></div>
+          ${sa ? '' : `<div class="idc-no idc-pp" title="رقم جواز السفر"><small>رقم الجواز</small><bdi dir="ltr">${esc(e.passport || '—')}</bdi></div>`}</div>`;
+  const idcRow = (l, v, cls = '') => `<div class="idc-r${cls}"><small>${l}</small><b>${v}</b></div>`;
+  /* بيانات البطاقة: انتهاء الهوية / الإقامة أحمر إذا انتهى، وأصفر إذا بقي 60 يوماً أو أقل */
+  const empCardGrid = (e, sa) => {
+    const xd = /^\d{4}-\d{2}-\d{2}$/.test(e.iqamaEnd || '') ? SF.daysBetween(today(), e.iqamaEnd) : null;
+    const row = idcRow;
+    return `${row('الجنسية', `${natFlag(e.nationality || (sa ? 'سعودي' : ''))}${esc(e.nationality || (sa ? 'سعودي' : '—'))}`)}${row(sa ? 'انتهاء الهوية' : 'انتهاء الإقامة', e.iqamaEnd ? `<span title="${xd < 0 ? `منتهية منذ ${-xd} يوم` : `باقٍ ${xd} يوم`}">${esc(SF.fmtDate(e.iqamaEnd))}</span>` : '—', xd === null ? '' : xd < 0 ? ' exp' : xd <= 60 ? ' soon' : '')}
+        ${row('الفرع', esc(e.branch || '—'))}${row('الإدارة', esc(e.department || '—'))}
+        ${row('رقم الجوال', `<bdi dir="ltr">${esc(e.phone || '—')}</bdi>`)}${row('الكفالة', `<span title="${esc(e.kafala || '')}">${esc(e.kafala || '—')}</span>`, ' full')}${row('الإيميل', `<span title="${esc(e.email || '')}">${esc(e.email || '—')}</span>`, ' full')}`;
+  };
+  /* ذيل البطاقة: رصيد الإجازات وأقرب مستند منتهٍ، ثم أزرار التواصل والتعديل والعرض */
+  const empCardFoot = (e, editor) => {
+    const al = e.status !== 'غير نشط' && e.iqamaEnd !== undefined && empAlert(e);
+    const talk = e.uid && e.uid !== state.user.id;
+    return `<div class="emp-foot"><span class="row" style="gap:6px;flex-wrap:wrap">${e.leaveBal != null ? `<span class="emp-leave${e.leaveBal < 0 ? ' neg' : ''}" title="رصيد الإجازة السنوية المتاح (بنفس طريقة التصفية)">${icon('bookOpen')} رصيد الإجازات: <b>${esc(Number(e.leaveBal).toFixed(2))}</b> يوم</span>` : ''}${al ? `<span class="chip ${al.days < 0 ? 'rejected' : 'pending'}" title="${esc(SF.fmtDate(al.date))}">${esc(al.l)}: ${esc(docLeft(al))}</span>` : ''}</span>
+        <span class="row" style="gap:4px">${talk ? empCardTalk(e, editor) : ''}${editor ? `<button class="btn sm ghost" data-eed="${e.id}" title="تعديل">✏️</button>` : ''}<a class="btn sm ghost" href="#/employee/${e.id}" title="عرض ملف الموظف">👁</a></span></div>`;
+  };
+  /* دردشة سريعة ورسالة بريد، وإعادة تعيين الهاتف (للمحرر) */
+  const empCardTalk = (e, editor) =>
+    `${can('chat') ? `<button class="btn sm ghost" data-echat="${e.uid}" title="دردشة سريعة">💬</button>` : ''}${can('mail') ? `<a class="btn sm ghost" href="#/mail/new?to=${e.uid}" title="رسالة بريد">✉️</a>` : ''}${editor ? `<button class="btn sm ghost${e.mobBound ? '' : ' dim'}" data-eunbind="${e.id}" title="${e.mobBound ? 'إعادة تعيين الهاتف (إلغاء ربط الجوال الحالي)' : 'لا يوجد جوال مربوط بحسابه'}">📱</button>` : ''}`;
   /* إعادة تعيين الهاتف من كارت الموظف: يُلغى ربط الجوال (والبصمة)، وأول جوال يدخل منه بعدها يُربط بحسابه */
   document.addEventListener('click', async (ev) => {
     const b = ev.target.closest('[data-eunbind]');
@@ -106,64 +121,9 @@
       <div id="emErr"></div><div class="row" style="margin-top:14px;gap:8px"><button class="btn primary">💾 حفظ</button><button type="button" class="btn ghost" data-x>إلغاء</button></div></form></div>`;
     document.body.appendChild(bg);
     $('[data-x]', bg).onclick = () => bg.remove();
-    {
-      const natIn = $('[data-key="nationality"]', bg),
-        iqIn = $('[data-key="iqama"]', bg);
-      const saBoxes = SF.EMP_FIELDS.filter((f) => f.saudiOnly)
-        .map((f) => {
-          const i = $(`[data-key="${f.key}"]`, bg);
-          return i && i.closest('.field') ? i.closest('.field').parentElement : null;
-        })
-        .filter(Boolean);
-      const syncSa = () => {
-        const sa = SF.empCitizen({ nationality: natIn ? natIn.value : (e || {}).nationality, iqama: iqIn ? iqIn.value : (e || {}).iqama });
-        saBoxes.forEach((b) => {
-          b.hidden = !sa;
-        });
-      };
-      [natIn, iqIn].forEach((x) => {
-        if (x) {
-          x.addEventListener('input', syncSa);
-          x.addEventListener('change', syncSa);
-        }
-      });
-      syncSa();
-      SF.EMP_FIELDS.filter((f) => f.showIf).forEach((f) => {
-        const sel = $(`[data-key="${f.showIf[0]}"]`, bg),
-          inp = $(`[data-key="${f.key}"]`, bg);
-        const cell = inp && inp.closest('.field') ? inp.closest('.field').parentElement : null;
-        if (!sel || !cell) return;
-        const sync = () => {
-          cell.hidden = ![].concat(f.showIf[1]).includes(sel.value);
-        };
-        sel.addEventListener('change', sync);
-        sync();
-      });
-    }
-    /* المدير المباشر: قائمة منسدلة بالموظفين (الاسم — الرقم الوظيفي)، والاختيار يحفظ الرقم الوظيفي */
-    const mgrIn = $('[data-key="manager"]', bg);
-    if (mgrIn)
-      api('GET', '/api/emp-lookup')
-        .then((x) => {
-          const L = (x.list || []).filter((m) => m.empNo && (!e || m.id !== e.id));
-          mgrIn.setAttribute('list', 'dl-emp-mgr');
-          mgrIn.placeholder = 'ابحث بالاسم أو الرقم الوظيفي...';
-          mgrIn.insertAdjacentHTML(
-            'afterend',
-            `<datalist id="dl-emp-mgr">${L.map((m) => `<option value="${esc(`${m.nameAr} — ${m.empNo}`)}">${esc(m.title || '')}</option>`).join('')}</datalist>`,
-          );
-          const cur = L.find((m) => m.empNo === mgrIn.value.trim());
-          if (cur) mgrIn.value = `${cur.nameAr} — ${cur.empNo}`;
-          const pick = () => {
-            const m = /—\s*(\S+)\s*$/.exec(mgrIn.value);
-            if (m && L.some((y) => y.empNo === m[1])) mgrIn.dataset.no = m[1];
-            else delete mgrIn.dataset.no;
-          };
-          mgrIn.addEventListener('change', pick);
-          mgrIn.addEventListener('input', pick);
-          pick();
-        })
-        .catch(() => {});
+    empModalSaudi(bg, e);
+    empModalShowIf(bg);
+    const mgrIn = empModalManager(bg, e);
     $('#emf', bg).onsubmit = async (ev) => {
       ev.preventDefault();
       const body = collect(
@@ -189,6 +149,71 @@
         $('#emErr', bg).innerHTML = `<div class="err">${esc(err.message)}</div>`;
       }
     };
+  }
+  /* خانات السعوديين فقط: تظهر حسب الجنسية / رقم الهوية وتتابع تغيّرهما */
+  function empModalSaudi(bg, e) {
+    const natIn = $('[data-key="nationality"]', bg),
+      iqIn = $('[data-key="iqama"]', bg);
+    const saBoxes = SF.EMP_FIELDS.filter((f) => f.saudiOnly)
+      .map((f) => {
+        const i = $(`[data-key="${f.key}"]`, bg);
+        return i && i.closest('.field') ? i.closest('.field').parentElement : null;
+      })
+      .filter(Boolean);
+    const syncSa = () => {
+      const sa = SF.empCitizen({ nationality: natIn ? natIn.value : (e || {}).nationality, iqama: iqIn ? iqIn.value : (e || {}).iqama });
+      saBoxes.forEach((b) => {
+        b.hidden = !sa;
+      });
+    };
+    [natIn, iqIn].forEach((x) => {
+      if (x) {
+        x.addEventListener('input', syncSa);
+        x.addEventListener('change', syncSa);
+      }
+    });
+    syncSa();
+  }
+  /* خانات تظهر حسب اختيار خانة أخرى (showIf) */
+  function empModalShowIf(bg) {
+    SF.EMP_FIELDS.filter((f) => f.showIf).forEach((f) => {
+      const sel = $(`[data-key="${f.showIf[0]}"]`, bg),
+        inp = $(`[data-key="${f.key}"]`, bg);
+      const cell = inp && inp.closest('.field') ? inp.closest('.field').parentElement : null;
+      if (!sel || !cell) return;
+      const sync = () => {
+        cell.hidden = ![].concat(f.showIf[1]).includes(sel.value);
+      };
+      sel.addEventListener('change', sync);
+      sync();
+    });
+  }
+  /* المدير المباشر: قائمة منسدلة بالموظفين (الاسم — الرقم الوظيفي)، والاختيار يحفظ الرقم الوظيفي */
+  function empModalManager(bg, e) {
+    const mgrIn = $('[data-key="manager"]', bg);
+    if (mgrIn)
+      api('GET', '/api/emp-lookup')
+        .then((x) => {
+          const L = (x.list || []).filter((m) => m.empNo && (!e || m.id !== e.id));
+          mgrIn.setAttribute('list', 'dl-emp-mgr');
+          mgrIn.placeholder = 'ابحث بالاسم أو الرقم الوظيفي...';
+          mgrIn.insertAdjacentHTML(
+            'afterend',
+            `<datalist id="dl-emp-mgr">${L.map((m) => `<option value="${esc(`${m.nameAr} — ${m.empNo}`)}">${esc(m.title || '')}</option>`).join('')}</datalist>`,
+          );
+          const cur = L.find((m) => m.empNo === mgrIn.value.trim());
+          if (cur) mgrIn.value = `${cur.nameAr} — ${cur.empNo}`;
+          const pick = () => {
+            const m = /—\s*(\S+)\s*$/.exec(mgrIn.value);
+            if (m && L.some((y) => y.empNo === m[1])) mgrIn.dataset.no = m[1];
+            else delete mgrIn.dataset.no;
+          };
+          mgrIn.addEventListener('change', pick);
+          mgrIn.addEventListener('input', pick);
+          pick();
+        })
+        .catch(() => {});
+    return mgrIn;
   }
   /* ملف الموظف للتحميل: كل بياناته في صفحة A4 (طباعة / حفظ PDF) أو ملف Excel */
   /* ---------- مسيرات الرواتب ---------- */
@@ -252,95 +277,6 @@
   S.ocBranch = '';
   /* العرض الافتراضي: مستويات تتفتح بالضغط بشكل شجري — مسار الأعلى، ثم الوحدة الحالية، ثم الوحدات التابعة لها متصلة بخطوط */
   S.ocView = 'cards';
-  let ocFocus = '';
-  function orgCardsHtml(d) {
-    const brs = d.units.filter((u) => u.kind === 'فرع');
-    const kids = (pid) =>
-      pid === '__br' ? brs : d.units.filter((u) => (u.parent || '') === pid && (S.ocMode !== 'co' || u.kind !== 'فرع'));
-    const byId = (id) => d.units.find((u) => u.id === id);
-    const KC = { إدارة: '#9b1c1c', فرع: '#1d4f91', قسم: '#0f766e', منصب: '#6d28d9' };
-    const KI = { إدارة: 'layers', فرع: 'branch', قسم: 'folderOpen', منصب: 'user' };
-    const C = (u) => (d.chart || {})[u.id] || {};
-    const av = (u, cls = '') => {
-      const pr = C(u).person;
-      return `<span class="od-av ${cls}">${pr && pr.photo ? `<img src="/api/employees/${pr.id}/photo?v=${encodeURIComponent(pr.photo)}" alt="" loading="lazy" data-rmerr>` : pr ? empAvatar({ gender: pr.gender }) : u.manager ? AV_MALE : icon(KI[u.kind] || 'layers')}</span>`;
-    };
-    const total = (u) => C(u).total || u.count || 0;
-    if (!d.units.length)
-      return `<div class="card empty">لم تنشئ التقسيم الإداري بعد — ${SF.settingsTabs(state.user).includes('orgdiv') ? '<a href="#/settings/orgdiv">أنشئه من الإعدادات ← التقسيم الإداري</a>' : 'أنشئه من الإعدادات ← التقسيم الإداري'}</div>`;
-    /* نقطة البداية: هيكل الشركة يبدأ من رأس الهيكل، وهيكل الفروع من قائمة الفروع */
-    /* البداية: نقطة تفرع القيادة (المدير العام ← التنفيذي ما دام لكل منهما تابع واحد) فتظهر الإدارات مباشرة */
-    let rootId = S.ocMode === 'br' ? '__br' : (kids('')[0] || {}).id || '';
-    for (let i = 0; S.ocMode === 'co' && i < 6; i++) {
-      const k = kids(rootId);
-      if (k.length === 1 && k[0].kind === 'منصب' && kids(k[0].id).length) rootId = k[0].id;
-      else break;
-    }
-    if (S.ocMode === 'br' && ocFocus && ocFocus !== '__br' && !byId(ocFocus)) ocFocus = '';
-    if (!ocFocus || (ocFocus !== '__br' && !byId(ocFocus))) ocFocus = rootId;
-    if (S.ocMode === 'co' && ocFocus === '__br') ocFocus = rootId;
-    const focus = ocFocus === '__br' ? { id: '__br', name: 'فروع الشركة', kind: 'فرع', manager: '' } : byId(ocFocus);
-    /* مسار الأعلى */
-    const path = [];
-    for (let x = focus; x && x.id !== '__br' && path.length < 30; x = byId(x.parent)) path.unshift(x);
-    if (S.ocMode === 'br' && focus.id !== '__br') {
-      while (path.length && path[0].kind !== 'فرع') path.shift();
-      path.unshift({ id: '__br', name: 'فروع الشركة', kind: 'فرع' });
-    }
-    const title = (u) => (u.kind === 'منصب' ? u.manager || 'شاغر' : u.name);
-    const sub = (u) => (u.kind === 'منصب' ? u.name : u.manager || '');
-    const node = (u, big) => {
-      const k = kids(u.id),
-        n = total(u),
-        c = KC[u.kind] || '#64748b';
-      return `<div class="od-n${big ? ' big' : ''}${k.length ? ' has' : ''}" style="--c:${c}" ${!big && k.length ? `data-ofocus="${u.id}" role="button" tabindex="0" title="فتح ${esc(u.name)}"` : ''}>
-        ${av(u, big ? 'lg' : '')}<span class="od-k">${icon(KI[u.kind] || 'layers')} ${esc(u.id === '__br' ? 'الفروع' : u.kind || 'إدارة')}</span>
-        <b class="od-t">${esc(title(u))}</b>${sub(u) ? `<small class="od-s">${esc(sub(u))}</small>` : ''}
-        <span class="od-f">${n ? `<i title="عدد الموظفين">${icon('users')} ${n}</i>` : ''}${k.length ? `<i class="od-open" title="الوحدات التابعة">${icon('layers')} ${k.length}${big ? '' : ' ‹'}</i>` : ''}</span></div>`;
-    };
-    const K = kids(focus.id);
-    const up = path.slice(0, -1);
-    const pill = (u, lv) => {
-      const k = kids(u.id),
-        n = total(u),
-        c = KC[u.kind] || '#64748b',
-        click = lv !== 'top' && k.length;
-      return `<div class="ot-p ${lv}${click ? ' go' : ''}" style="--c:${c}"${click ? ` data-ofocus="${u.id}" role="button" tabindex="0" title="فتح ${esc(u.name)} (${k.length})"` : ''}>
-        ${av(u, lv === 'top' ? 'lg' : lv === 'dep' ? 'md' : 'sm')}<div class="ot-l"><b>${esc(u.id === '__br' ? 'فروع الشركة' : u.kind === 'منصب' ? u.name : u.name)}</b><small>${esc(u.manager || (u.kind === 'منصب' ? 'شاغر' : u.kind))}</small></div>${click ? `<i class="ot-more">${k.length}</i>` : ''}</div>`;
-    };
-    return `<div class="card od"><div class="og-top"><div class="og-seg">${[
-      ['co', 'هيكل الشركة', 'layers'],
-      ['br', 'هيكل الفروع', 'branch'],
-    ]
-      .map(([k, l, ic]) => `<button type="button" data-om="${k}" class="${S.ocMode === k ? 'on' : ''}">${icon(ic)} ${l}</button>`)
-      .join('')}</div>
-        <div class="og-search">${icon('search')}<input id="ogQ" type="search" placeholder="ابحث عن إدارة أو قسم أو شخص..." autocomplete="off"></div>
-        <div class="og-seg sm"><button type="button" class="on" data-ov="cards">${icon('layers')} مستويات</button><button type="button" data-ov="tree">${icon('gantt')} الشجرة كاملة</button></div></div>
-      <div class="od-res" id="ogRes" hidden></div>
-      <nav class="od-crumb">${path.map((u, i) => (i === path.length - 1 ? `<b>${esc(u.id === '__br' ? 'فروع الشركة' : u.name)}</b>` : `<a href="javascript:void 0" data-ofocus="${u.id}">${esc(u.id === '__br' ? 'فروع الشركة' : u.name)}</a>`)).join('<span>‹</span>')}</nav>
-      <div class="ot-wrap"><div class="ot">
-        ${
-          up.length
-            ? `<div class="od-up">${up
-                .slice(-2)
-                .map(
-                  (u) =>
-                    `<a href="javascript:void 0" class="od-anc" data-ofocus="${u.id}" style="--c:${KC[u.kind] || '#64748b'}">${av(u, 'xs')}<span><b>${esc(title(u))}</b><small>${esc(sub(u) || u.kind)}</small></span></a>`,
-                )
-                .join('<i class="ot-vl"></i>')}<i class="ot-vl"></i></div>`
-            : ''
-        }
-        ${pill(focus, 'top')}
-        ${
-          K.length
-            ? `<i class="ot-vl"></i><div class="ot-row${K.length === 1 ? ' one' : ''}">${K.map((u) => {
-                const g = kids(u.id);
-                return `<div class="ot-col">${pill(u, 'dep')}${g.length ? `<div class="ot-subs">${g.map((x) => `<div class="ot-si">${pill(x, 'sub')}</div>`).join('')}</div>` : ''}</div>`;
-              }).join('')}</div>`
-            : '<div class="od-leaf">لا توجد وحدات تابعة</div>'
-        }
-      </div></div></div>`;
-  }
   /* الهيكل كاملاً بالتصميم الكبسولي: القيادة ← صف الإدارات على خط أفقي ← كل ما تحت الإدارة على خطوط رأسية متداخلة */
   S.otInit = false;
   S.otQuery = '';
@@ -419,6 +355,19 @@
         ${fan.length ? `${S.ocMode === 'br' && S.ocBranch ? '' : '<i class="ot-vl"></i>'}<div class="ot-row${fan.length === 1 ? ' one' : ''}">${fan.map((u) => `<div class="ot-col">${pill(u, 'dep')}${subs(u, 0)}</div>`).join('')}</div>` : ''}
       </div></div></div>`;
   }
+  /* المربع: صورة دائرية (صورة الموظف إن عُرف وله صورة، وإلا صورة رمزية، وإلا أيقونة نوع الوحدة) */
+  function ocFace(d, u) {
+    const pr = ((d.chart || {})[u.id] || {}).person;
+    const av =
+      pr && pr.photo
+        ? `<img src="/api/employees/${pr.id}/photo?v=${encodeURIComponent(pr.photo)}" alt="" loading="lazy" data-rmerr>`
+        : pr
+          ? empAvatar({ gender: pr.gender })
+          : u.manager
+            ? AV_MALE
+            : icon(u.kind === 'منصب' ? 'user' : u.kind === 'فرع' ? 'branch' : u.kind === 'قسم' ? 'folderOpen' : 'layers');
+    return `<span class="oc-av${!pr && !u.manager ? ' unit' : ''}">${av}</span>`;
+  }
   /* bare: الرسم وحده (لصفحة تنزيل PDF) بدون أدوات العرض */
   function orgChartHtml(d, bare) {
     if (!bare) return orgFullHtml(d);
@@ -446,26 +395,17 @@
         closed = ocClosed.has(u.id);
       /* الوحدات الكثيرة بلا تفرعات ظاهرة (أو مطويّة) عمود واحد تحت أصلها */
       const leafs = k.length > 4 && k.every((x) => !ch(x).length || (x.kind === 'فرع' && ocClosed.has(x.id)));
-      /* المربع: صورة دائرية (صورة الموظف إن عُرف وله صورة، وإلا صورة رمزية) ثم الاسم ثم المنصب / الوحدة */
-      const pr = ((d.chart || {})[u.id] || {}).person;
-      const av =
-        pr && pr.photo
-          ? `<img src="/api/employees/${pr.id}/photo?v=${encodeURIComponent(pr.photo)}" alt="" loading="lazy" data-rmerr>`
-          : pr
-            ? empAvatar({ gender: pr.gender })
-            : u.manager
-              ? AV_MALE
-              : icon(u.kind === 'منصب' ? 'user' : u.kind === 'فرع' ? 'branch' : u.kind === 'قسم' ? 'folderOpen' : 'layers');
-      const face = `<span class="oc-av${!pr && !u.manager ? ' unit' : ''}">${av}</span>`;
+      const face = ocFace(d, u);
+      /* زر الطي / الفتح ثم الوحدات التابعة (المطويّة لا تُرسم) */
+      const tail = `${k.length ? `<button type="button" class="oc-tg" data-tg="${u.id}" title="${closed ? 'فتح' : 'طي'}">${closed ? `+ ${k.length}` : '−'}</button>` : ''}</div>
+        ${k.length && !closed ? `<ul${leafs ? ' class="oc-v"' : ''}>${(leafs ? k : k.slice().reverse()).map(node).join('')}</ul>` : ''}</li>`;
       /* المنصب: الصورة ثم اسم الشخص ثم المسمى */
       if (u.kind === 'منصب')
         return `<li><div class="oc-n k-pos">${face}${u.manager ? `<b class="oc-name">${esc(u.manager)}</b>` : ''}<span class="oc-p">${esc(u.name)}</span>
-        ${k.length ? `<button type="button" class="oc-tg" data-tg="${u.id}" title="${closed ? 'فتح' : 'طي'}">${closed ? `+ ${k.length}` : '−'}</button>` : ''}</div>
-        ${k.length && !closed ? `<ul${leafs ? ' class="oc-v"' : ''}>${(leafs ? k : k.slice().reverse()).map(node).join('')}</ul>` : ''}</li>`;
+        ${tail}`;
       return `<li><div class="oc-n k-${KIND[u.kind] || 'dep'}">${face}<span class="oc-k">${esc(u.kind || 'إدارة')}</span><b class="oc-name">${esc(u.name)}</b>
         ${u.manager ? `<small class="oc-m">${esc(u.manager)}</small>` : ''}
-        ${k.length ? `<button type="button" class="oc-tg" data-tg="${u.id}" title="${closed ? 'فتح' : 'طي'}">${closed ? `+ ${k.length}` : '−'}</button>` : ''}</div>
-        ${k.length && !closed ? `<ul${leafs ? ' class="oc-v"' : ''}>${(leafs ? k : k.slice().reverse()).map(node).join('')}</ul>` : ''}</li>`;
+        ${tail}`;
     };
     const brs = d.units.filter((u) => u.kind === 'فرع');
     /* هيكل الفروع: كل الفروع تحت بعضها (كل فرع في قسم بعنوانه)، أو فرع واحد يُختار */
@@ -525,6 +465,7 @@
     '#/reports': '#9333ea',
     '#/todo': '#10b981',
     '#/notes': '#eab308',
+    tools: '#0f766e',
     '#/trash': '#f43f5e',
     '#/settings': '#64748b',
     '#/access-requests': '#b45309',
@@ -561,16 +502,13 @@
   ];
   const appHue = (k) =>
     APP_HUES[k] || HUE_POOL[[...String(k || '')].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7) % HUE_POOL.length];
-  /* شكل الأيقونات: حديث (افتراضي) أو الأصلي — لكل مستخدم على جهازه */
-  const apStyleKey = () => `apps-style:${(state.user || {}).id || ''}`;
-  const apStyle = () => {
-    try {
-      return localStorage.getItem(apStyleKey()) === 'classic' ? 'classic' : 'modern';
-    } catch {
-      return 'modern';
-    }
+  /* شكل الأيقونات: الثيم الرسمي الموحد لكل المستخدمين (قرار الإدارة 2026-11 — أُلغي «حديث / الأصلي»)؛ التنسيق في public/css/theme.css */
+  const apStyle = () => 'formal';
+  const apStyleApply = () => {
+    const html = document.documentElement;
+    html.classList.remove('ap-modern');
+    html.classList.add('ap-formal');
   };
-  const apStyleApply = () => document.documentElement.classList.toggle('ap-modern', apStyle() === 'modern');
   /* الهوية الموحدة: لون وأيقونة كل صفحة كما في صفحة التطبيقات (نفس ترتيب الألوان: المستوى الأعلى بترتيبه، وداخل القسم بترتيبها فيه) */
   function appToneOf(hash) {
     const out = [];
@@ -641,7 +579,6 @@
     ocClosed,
     APP_TONES,
     appHue,
-    apStyleKey,
     apStyle,
     apStyleApply,
   });

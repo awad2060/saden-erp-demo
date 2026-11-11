@@ -7,7 +7,7 @@
   Object.assign(S, { SF, esc, fmtDate: SF.fmtDate, fmtNum });
   /* محتوى الدليل (guide-data.js): يُقرأ وقت الطلب بأدوات الصلاحيات الحالية */
   const guide = () => (window.SES_GUIDE.use({ can: S.can, today: S.today, AN_TOOLS: S.AN_TOOLS, AN_CHAIN: S.AN_CHAIN }), window.SES_GUIDE);
-  for (const k of ['GUIDE', 'GUIDE_CATS', 'GUIDE_EN', 'GUIDE_META'])
+  for (const k of ['GUIDE', 'GUIDE_CATS', 'GUIDE_EN', 'GUIDE_UR', 'GUIDE_DYN', 'GUIDE_META'])
     Object.defineProperty(S, k, { get: () => guide()[k], enumerable: true, configurable: true });
   Object.assign(S, {
     viewSettings,
@@ -96,97 +96,102 @@
     viewBuilder,
     viewAccount,
   });
+  /* دوال الصفحات التي تُسجَّل في S بعد تحميل الصفحات: [الصفحة، الدالة] بالترتيب */
+  const PAGE_EXPORTS = [
+    ['settings', 'viewSettings'],
+    ['settings', 'viewUserPage'],
+    ['request-editor', 'viewEditor'],
+    ['policy', 'viewPolicyGate'],
+    ['policy', 'viewMobileApp'],
+    ['policy', 'viewPolicy'],
+    ['policy', 'viewGuide'],
+    ['mail', 'viewMail'],
+    ['tasks', 'viewTasks'],
+    ['tasks', 'viewTask'],
+    ['notifications', 'viewNotifications'],
+    ['notifications', 'viewNotices'],
+    ['login', 'viewLogin'],
+    ['access-requests', 'viewAccessRequests'],
+    ['home', 'viewHome'],
+    ['requests-list', 'viewList'],
+    ['new-request', 'viewNew'],
+    ['settlement', 'viewSettle'],
+    ['request-details', 'viewRequest'],
+    ['notes', 'viewNotes'],
+    ['fleet', 'viewFleet'],
+    ['fleet', 'viewVehicle'],
+    ['pay-funding', 'viewPayFunding'],
+    ['pay-funding', 'viewBranchPay'],
+    ['drilling', 'viewDrillProject'],
+    ['drilling', 'viewDrillProjects'],
+    ['drilling', 'viewDrilling'],
+    ['workshop', 'viewWorkshop'],
+    ['chat', 'viewChat'],
+    ['employee-file', 'viewEmployeePrint'],
+    ['employee-file', 'viewEmployee'],
+    ['employees', 'viewIqamas'],
+    ['employees', 'viewEmployees'],
+    ['attendance', 'viewAttendance'],
+    ['gosi', 'viewGosi'],
+    ['about', 'viewAbout'],
+    ['org-chart', 'viewOrgPrint'],
+    ['org-chart', 'viewOrg'],
+    ['apps', 'viewApps'],
+    ['emp-affairs', 'viewEmpAffairs'],
+    ['contracts', 'viewContracts'],
+    ['decisions', 'viewDecisionCenter'],
+    ['executive', 'viewExecutive'],
+    ['my-profile', 'viewMe'],
+    ['ended-employees', 'viewEnded'],
+    ['payroll', 'viewPayroll'],
+    ['payroll', 'viewPayrun'],
+    ['payroll', 'viewPayslips'],
+    ['advances', 'viewAdvances'],
+    ['adv-ledger', 'viewAdvLedger'],
+    ['overtime', 'viewMyOvertime'],
+    ['overtime', 'viewOtApprovals'],
+    ['todo', 'viewTodo'],
+    ['calendar', 'viewCalendar'],
+    ['contacts', 'viewContacts'],
+    ['mudad', 'viewMudadPay'],
+    ['documents', 'viewDocs'],
+    ['crm', 'viewCrm'],
+    ['legal-cases', 'viewLegalCases'],
+    ['investigations', 'viewInvestigations'],
+    ['kpi', 'viewKpi'],
+    ['companies', 'viewCompanies'],
+    ['reports', 'viewReports'],
+    ['punch', 'viewPunch'],
+    ['inventory', 'viewDevices'],
+    ['inventory', 'viewInvDeleted'],
+    ['inventory', 'viewInventory'],
+    ['violations', 'viewViolations'],
+    ['fuel', 'viewFuel'],
+    ['facilities', 'viewFacilities'],
+    ['analysis', 'viewAnalysis'],
+    ['training', 'viewTraining'],
+    ['knowledge', 'viewKnowledge'],
+    ['governance', 'viewGovernance'],
+    ['supervision', 'viewSupervision'],
+    ['hse', 'viewHse'],
+    ['stock', 'viewStock'],
+    ['branch-map', 'viewBranchMap'],
+    ['print', 'viewPrint'],
+    ['dashboard', 'viewDashboard'],
+    ['dept-report', 'viewReport'],
+    ['tools', 'viewTools'],
+    ['trash', 'viewTrash'],
+    ['form-builder', 'viewBuilder'],
+    ['account', 'viewAccount'],
+  ];
   let PAGES_READY = null;
   function pages() {
     if (PAGES_READY) return PAGES_READY;
     PAGES_READY = {};
     const reg = window.SES_PAGES || {};
     for (const k of Object.keys(reg)) PAGES_READY[k] = reg[k](S);
-    if (PAGES_READY['settings']) S.viewSettings = PAGES_READY['settings'].viewSettings;
-    if (PAGES_READY['settings']) S.viewUserPage = PAGES_READY['settings'].viewUserPage;
-    if (PAGES_READY['request-editor']) S.viewEditor = PAGES_READY['request-editor'].viewEditor;
-    if (PAGES_READY['policy']) S.viewPolicyGate = PAGES_READY['policy'].viewPolicyGate;
-    if (PAGES_READY['policy']) S.viewMobileApp = PAGES_READY['policy'].viewMobileApp;
-    if (PAGES_READY['policy']) S.viewPolicy = PAGES_READY['policy'].viewPolicy;
-    if (PAGES_READY['policy']) S.viewGuide = PAGES_READY['policy'].viewGuide;
-    if (PAGES_READY['mail']) S.viewMail = PAGES_READY['mail'].viewMail;
-    if (PAGES_READY['tasks']) S.viewTasks = PAGES_READY['tasks'].viewTasks;
-    if (PAGES_READY['tasks']) S.viewTask = PAGES_READY['tasks'].viewTask;
-    if (PAGES_READY['notifications']) S.viewNotifications = PAGES_READY['notifications'].viewNotifications;
-    if (PAGES_READY['notifications']) S.viewNotices = PAGES_READY['notifications'].viewNotices;
-    if (PAGES_READY['login']) S.viewLogin = PAGES_READY['login'].viewLogin;
-    if (PAGES_READY['access-requests']) S.viewAccessRequests = PAGES_READY['access-requests'].viewAccessRequests;
-    if (PAGES_READY['home']) S.viewHome = PAGES_READY['home'].viewHome;
-    if (PAGES_READY['requests-list']) S.viewList = PAGES_READY['requests-list'].viewList;
-    if (PAGES_READY['new-request']) S.viewNew = PAGES_READY['new-request'].viewNew;
-    if (PAGES_READY['settlement']) S.viewSettle = PAGES_READY['settlement'].viewSettle;
-    if (PAGES_READY['request-details']) S.viewRequest = PAGES_READY['request-details'].viewRequest;
-    if (PAGES_READY['notes']) S.viewNotes = PAGES_READY['notes'].viewNotes;
-    if (PAGES_READY['fleet']) S.viewFleet = PAGES_READY['fleet'].viewFleet;
-    if (PAGES_READY['fleet']) S.viewVehicle = PAGES_READY['fleet'].viewVehicle;
-    if (PAGES_READY['pay-funding']) S.viewPayFunding = PAGES_READY['pay-funding'].viewPayFunding;
-    if (PAGES_READY['pay-funding']) S.viewBranchPay = PAGES_READY['pay-funding'].viewBranchPay;
-    if (PAGES_READY['drilling']) S.viewDrillProject = PAGES_READY['drilling'].viewDrillProject;
-    if (PAGES_READY['drilling']) S.viewDrillProjects = PAGES_READY['drilling'].viewDrillProjects;
-    if (PAGES_READY['drilling']) S.viewDrilling = PAGES_READY['drilling'].viewDrilling;
-    if (PAGES_READY['workshop']) S.viewWorkshop = PAGES_READY['workshop'].viewWorkshop;
-    if (PAGES_READY['chat']) S.viewChat = PAGES_READY['chat'].viewChat;
-    if (PAGES_READY['employee-file']) S.viewEmployeePrint = PAGES_READY['employee-file'].viewEmployeePrint;
-    if (PAGES_READY['employee-file']) S.viewEmployee = PAGES_READY['employee-file'].viewEmployee;
-    if (PAGES_READY['employees']) S.viewIqamas = PAGES_READY['employees'].viewIqamas;
-    if (PAGES_READY['employees']) S.viewEmployees = PAGES_READY['employees'].viewEmployees;
-    if (PAGES_READY['attendance']) S.viewAttendance = PAGES_READY['attendance'].viewAttendance;
-    if (PAGES_READY['gosi']) S.viewGosi = PAGES_READY['gosi'].viewGosi;
-    if (PAGES_READY['about']) S.viewAbout = PAGES_READY['about'].viewAbout;
-    if (PAGES_READY['org-chart']) S.viewOrgPrint = PAGES_READY['org-chart'].viewOrgPrint;
-    if (PAGES_READY['org-chart']) S.viewOrg = PAGES_READY['org-chart'].viewOrg;
-    if (PAGES_READY['apps']) S.viewApps = PAGES_READY['apps'].viewApps;
-    if (PAGES_READY['emp-affairs']) S.viewEmpAffairs = PAGES_READY['emp-affairs'].viewEmpAffairs;
-    if (PAGES_READY['contracts']) S.viewContracts = PAGES_READY['contracts'].viewContracts;
-    if (PAGES_READY['decisions']) S.viewDecisionCenter = PAGES_READY['decisions'].viewDecisionCenter;
-    if (PAGES_READY['executive']) S.viewExecutive = PAGES_READY['executive'].viewExecutive;
-    if (PAGES_READY['my-profile']) S.viewMe = PAGES_READY['my-profile'].viewMe;
-    if (PAGES_READY['ended-employees']) S.viewEnded = PAGES_READY['ended-employees'].viewEnded;
-    if (PAGES_READY['payroll']) S.viewPayroll = PAGES_READY['payroll'].viewPayroll;
-    if (PAGES_READY['payroll']) S.viewPayrun = PAGES_READY['payroll'].viewPayrun;
-    if (PAGES_READY['payroll']) S.viewPayslips = PAGES_READY['payroll'].viewPayslips;
-    if (PAGES_READY['advances']) S.viewAdvances = PAGES_READY['advances'].viewAdvances;
-    if (PAGES_READY['adv-ledger']) S.viewAdvLedger = PAGES_READY['adv-ledger'].viewAdvLedger;
-    if (PAGES_READY['overtime']) S.viewMyOvertime = PAGES_READY['overtime'].viewMyOvertime;
-    if (PAGES_READY['overtime']) S.viewOtApprovals = PAGES_READY['overtime'].viewOtApprovals;
-    if (PAGES_READY['todo']) S.viewTodo = PAGES_READY['todo'].viewTodo;
-    if (PAGES_READY['calendar']) S.viewCalendar = PAGES_READY['calendar'].viewCalendar;
-    if (PAGES_READY['contacts']) S.viewContacts = PAGES_READY['contacts'].viewContacts;
-    if (PAGES_READY['mudad']) S.viewMudadPay = PAGES_READY['mudad'].viewMudadPay;
-    if (PAGES_READY['documents']) S.viewDocs = PAGES_READY['documents'].viewDocs;
-    if (PAGES_READY['crm']) S.viewCrm = PAGES_READY['crm'].viewCrm;
-    if (PAGES_READY['legal-cases']) S.viewLegalCases = PAGES_READY['legal-cases'].viewLegalCases;
-    if (PAGES_READY['investigations']) S.viewInvestigations = PAGES_READY['investigations'].viewInvestigations;
-    if (PAGES_READY['kpi']) S.viewKpi = PAGES_READY['kpi'].viewKpi;
-    if (PAGES_READY['companies']) S.viewCompanies = PAGES_READY['companies'].viewCompanies;
-    if (PAGES_READY['reports']) S.viewReports = PAGES_READY['reports'].viewReports;
-    if (PAGES_READY['punch']) S.viewPunch = PAGES_READY['punch'].viewPunch;
-    if (PAGES_READY['inventory']) S.viewDevices = PAGES_READY['inventory'].viewDevices;
-    if (PAGES_READY['inventory']) S.viewInvDeleted = PAGES_READY['inventory'].viewInvDeleted;
-    if (PAGES_READY['inventory']) S.viewInventory = PAGES_READY['inventory'].viewInventory;
-    if (PAGES_READY['violations']) S.viewViolations = PAGES_READY['violations'].viewViolations;
-    if (PAGES_READY['fuel']) S.viewFuel = PAGES_READY['fuel'].viewFuel;
-    if (PAGES_READY['facilities']) S.viewFacilities = PAGES_READY['facilities'].viewFacilities;
-    if (PAGES_READY['analysis']) S.viewAnalysis = PAGES_READY['analysis'].viewAnalysis;
-    if (PAGES_READY['training']) S.viewTraining = PAGES_READY['training'].viewTraining;
-    if (PAGES_READY['knowledge']) S.viewKnowledge = PAGES_READY['knowledge'].viewKnowledge;
-    if (PAGES_READY['governance']) S.viewGovernance = PAGES_READY['governance'].viewGovernance;
-    if (PAGES_READY['supervision']) S.viewSupervision = PAGES_READY['supervision'].viewSupervision;
-    if (PAGES_READY['hse']) S.viewHse = PAGES_READY['hse'].viewHse;
-    if (PAGES_READY['stock']) S.viewStock = PAGES_READY['stock'].viewStock;
-    if (PAGES_READY['branch-map']) S.viewBranchMap = PAGES_READY['branch-map'].viewBranchMap;
-    if (PAGES_READY['print']) S.viewPrint = PAGES_READY['print'].viewPrint;
-    if (PAGES_READY['dashboard']) S.viewDashboard = PAGES_READY['dashboard'].viewDashboard;
-    if (PAGES_READY['dept-report']) S.viewReport = PAGES_READY['dept-report'].viewReport;
-    if (PAGES_READY['tools']) S.viewTools = PAGES_READY['tools'].viewTools;
-    if (PAGES_READY['trash']) S.viewTrash = PAGES_READY['trash'].viewTrash;
-    if (PAGES_READY['form-builder']) S.viewBuilder = PAGES_READY['form-builder'].viewBuilder;
-    if (PAGES_READY['account']) S.viewAccount = PAGES_READY['account'].viewAccount;
+    /* أسماء كل صفحة في S (تُستدعى منها مباشرة) */
+    for (const [g, n] of PAGE_EXPORTS) if (PAGES_READY[g]) S[n] = PAGES_READY[g][n];
     return PAGES_READY;
   }
   function pageFn(g, n, self, args) {
@@ -468,7 +473,7 @@
   const isAdmin = () => state.user && state.user.role === 'admin';
   const seesAll = () => isAdmin() || state.user.viewScope === 'all';
   const allLabel = (u) =>
-    isAdmin() || u.viewScope === 'all' ? 'جميع الطلبات' : u.viewScope === 'branch' ? 'طلبات فرعي' : 'الطلبات المارة علي';
+    ({ all: 'جميع الطلبات', branch: 'طلبات فرعي', dept: 'طلبات إدارتي' })[isAdmin() ? 'all' : u.viewScope] || 'الطلبات المارة علي';
   const ACTIONS = {
     submit: 'رفع الطلب',
     resubmit: 'إعادة الإرسال بعد التعديل',

@@ -37,6 +37,7 @@ window.SES_PAGE_KITS['settings-4'] = function (S, ctx) {
     settingsHrPart,
     settingsOrgDiv,
     settingsRoles,
+    categoryCards,
     viewSettings,
   } = ctx;
   /* جزء من viewSettings: `<div class="card" id="mfgCard"><h3>دورة طلب التصنيع وإذن ال… */
@@ -179,11 +180,11 @@ window.SES_PAGE_KITS['settings-4'] = function (S, ctx) {
     if (tab === 'backup') await settingsBackup(body);
   }
   /* جزء من viewSettings: if (tab === 'general') settingsGeneral(body, setti… */
-  async function viewSettingsPart(body, saveSettings, settings, tab, users) {
+  async function viewSettingsPart(body, saveSettings, settings, tab, users, sub) {
     if (tab === 'general') settingsGeneral(body, settings, saveSettings);
     if (tab === 'orgdiv') settingsOrgDiv(body);
-    if (tab === 'users') settingsUsers(body, users, settings);
-    if (tab === 'roles') settingsRoles(body, settings, users, saveSettings);
+    if (tab === 'users') settingsUsers(body, users, settings, saveSettings);
+    if (tab === 'roles') await settingsRoles(body, settings, users, saveSettings, sub);
     if (tab === 'calendar') settingsCalendar(body, settings, saveSettings);
     if (tab === 'countries') await settingsCountries(body);
   }
@@ -303,7 +304,7 @@ window.SES_PAGE_KITS['settings-4'] = function (S, ctx) {
       </div>
       <div class="field full serial-box"><label>سياسة كلمات المرور</label>
         <div class="grid2" style="margin-top:6px">
-          <div class="field"><label>أقل عدد أحرف</label><input class="in" type="number" min="4" max="32" name="pMin" value="${esc(settingsGeneralValue7(s))}"></div>
+          <div class="field"><label>أقل عدد أحرف</label><input class="in" type="number" min="8" max="32" name="pMin" value="${esc(settingsGeneralValue7(s))}"></div>
           <div class="field"><label>تغييرها إجبارياً كل (يوم)</label><input class="in" type="number" min="0" max="3650" name="pExpire" value="${esc(settingsGeneralValue8(s))}"><div class="hint">0 = بدون انتهاء</div></div>
           <div class="field"><label>محاولات الدخول الخاطئة قبل الإيقاف</label><input class="in" type="number" min="3" max="50" name="pAttempts" value="${esc(settingsGeneralValue9(s))}"></div>
           <div class="field"><label>مدة الإيقاف (دقيقة)</label><input class="in" type="number" min="1" max="1440" name="pLock" value="${esc(settingsGeneralValue10(s))}"></div>
@@ -398,9 +399,9 @@ window.SES_PAGE_KITS['settings-4'] = function (S, ctx) {
   function settingsGeneralValue8(s) {
     return (s.passwordPolicy || {}).expireDays || 0;
   }
-  /* جزء من settingsGeneral: (s.passwordPolicy || {}).minLength || 6… */
+  /* جزء من settingsGeneral: أقل عدد أحرف لكلمة المرور — يُعرض المطبَّق فعلاً (لا يقل عن 8 مهما كان المحفوظ) */
   function settingsGeneralValue7(s) {
-    return (s.passwordPolicy || {}).minLength || 6;
+    return Math.max(8, (s.passwordPolicy || {}).minLength || 10);
   }
   /* جزء من settingsGeneral: (s.theme || {}).side || '#1e293b'… */
   function settingsGeneralValue6(s) {
@@ -478,13 +479,13 @@ window.SES_PAGE_KITS['settings-4'] = function (S, ctx) {
     };
   }
 
-  function settingsUsers(body, users, settings) {
+  function settingsUsers(body, users, settings, saveSettings) {
     const usedIn = (id) => settings.routes.filter((r) => r.steps.some((s) => s.userId === id)).length;
     const roleName = (u) => ((state.config.roles || []).find((r) => r.id === u.roleId) || {}).name || u.roleLabel || '';
-    let view = 'org',
+    let view = 'cards',
       q = '';
     try {
-      view = localStorage.getItem('users:view') || 'org';
+      view = localStorage.getItem('users:view2') || 'cards';
     } catch {
       /* افتراضي */
     }
@@ -500,7 +501,10 @@ window.SES_PAGE_KITS['settings-4'] = function (S, ctx) {
     const section = (title, n) => `<tbody><tr class="sec-row"><td colspan="8">${title} <small>(${n})</small></td></tr></tbody>`;
     const draw = () => {
       const match = (u) => !q || `${u.name} ${u.username} ${u.title} ${u.branch} ${roleName(u)}`.toLowerCase().includes(q);
-      drawPart(body, group, match, section, users, view);
+      $('#uTblWrap', body).hidden = view === 'cards';
+      $('#uCards', body).hidden = view !== 'cards';
+      if (view === 'cards') categoryCards($('#uCards', body), users, settings.roles || [], match, !!q);
+      else drawPart(body, group, match, section, users, view);
       $$('[data-uv]', body).forEach((x) => x.classList.toggle('on', x.dataset.uv === view));
       $$('[data-edit]', body).forEach((x) => {
         x.onclick = (e) => {
@@ -515,17 +519,18 @@ window.SES_PAGE_KITS['settings-4'] = function (S, ctx) {
       });
     };
     body.innerHTML = `<div class="card"><div class="row" style="justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-        <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><div class="tabs" style="margin:0"><button class="tab" data-uv="org">الفروع والإدارات</button><button class="tab" data-uv="role">حسب المسمى</button></div>
+        <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><div class="tabs" style="margin:0"><button class="tab" data-uv="cards">الفئات</button><button class="tab" data-uv="org">الفروع والإدارات</button></div>
           <input class="in" id="uQ" placeholder="بحث بالاسم أو اسم المستخدم أو الفرع..." style="width:260px"></div>
         <span class="row" style="gap:6px">${isAdmin() ? '<button class="btn" id="posLink" title="ربط حسابات المحاسبين والمعتمدين بشاغليها من سجل الموظفين بمطابقة الاسم">🔗 ربط المناصب بالموظفين</button>' : ''}<button class="btn primary" id="addU">➕ مستخدم جديد</button></span></div>
-      <div class="muted" style="margin-bottom:10px">التقسيم حسب "التصنيف" في نافذة كل مستخدم. عند إنشاء حساب أو إعادة تعيين كلمة المرور يطلب النظام من المستخدم تغييرها عند أول دخول.</div>
-      <div class="tbl-wrap"><table class="tbl" id="uTbl"></table></div></div>`;
+      <div class="muted" style="margin-bottom:10px">اضغط كارت الفئة لمستخدميها وصلاحياتها، واسم المستخدم لصفحته (وفيها فئته وتخصيص ما يظهر له وحده). عند إنشاء حساب أو إعادة تعيين كلمة المرور يطلب النظام من المستخدم تغييرها عند أول دخول.</div>
+      <div class="cat-grid" id="uCards"></div>
+      <div class="tbl-wrap" id="uTblWrap"><table class="tbl" id="uTbl"></table></div></div>`;
     wireSettingsUsers();
     $$('[data-uv]', body).forEach((x) => {
       x.onclick = () => {
         view = x.dataset.uv;
         try {
-          localStorage.setItem('users:view', view);
+          localStorage.setItem('users:view2', view);
         } catch {
           /* تجاهل */
         }

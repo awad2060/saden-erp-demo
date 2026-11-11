@@ -185,17 +185,14 @@ window.SES_PAGES['drilling'] = function (S) {
     const holes = (p.holes || [])
       .slice()
       .sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.no).localeCompare(String(b.no), 'ar', { numeric: true }));
-    const sumM = Math.round(holes.reduce((a, h) => a + (Number(h.depth) || 0), 0) * 100) / 100;
-    const doneN = holes.length || Number(p.done) || 0,
-      doneM = holes.length ? sumM : Number(p.doneM) || 0;
-    const pct = Number(p.planned) ? Math.min(100, Math.round((doneN / Number(p.planned)) * 100)) : null;
-    const pctM = Number(p.plannedM) ? Math.min(100, Math.round((doneM / Number(p.plannedM)) * 100)) : null;
+    /* الحسابات في js/drill-calc.js (مختبرة) */
+    const { sumM, doneN, doneM, pct, pctM, avgM } = window.SADEN_DRILL.progress(p, holes);
     const crew = p.crew || [];
     /* الحفارات للاختيار في الجسة: حفارات الموقع، وإلا حفارات المشروع، وإلا كل الأسطول */
     const rigs = crew.length ? [...new Set(crew.map((c) => c.rig))] : drillProjectValue2(p);
     const siteRigs = crew.length ? rigs : p.rigs || [];
     /* رقم الجسة التالية: آخر رقم + 1 بنفس البادئة (BH-01) */
-    const nextNo = (...args) => drillProjectNextNo(holes, ...args);
+    const nextNo = () => window.SADEN_DRILL.nextHoleNo(holes);
     const tile = (l, v, ic, c) =>
       `<div class="emp-stat"><div><div class="s-v">${v}</div><div class="s-l">${l}</div></div><span class="b-ic" style="--m:${c}">${icon(ic)}</span></div>`;
     const left = p.endDate ? SF.daysBetween(today(), p.endDate) : null;
@@ -205,7 +202,7 @@ window.SES_PAGES['drilling'] = function (S) {
       <div class="emp-stats">
         ${tile('الجسات المنفذة', `${doneN}${p.planned ? ` <small>من ${esc(p.planned)}</small>` : ''}`, 'pickaxe', '#0e9f9a')}
         ${tile('الأعماق المنفذة (متر)', `${fmtNum(doneM)}${p.plannedM ? ` <small>من ${esc(fmtNum(p.plannedM))}</small>` : ''}`, 'chart', '#3b9fd6')}
-        ${tile('متوسط عمق الجسة (متر)', holes.length ? fmtNum(Math.round((sumM / holes.length) * 100) / 100) : '—', 'layers', '#7c5cd6')}
+        ${tile('متوسط عمق الجسة (متر)', holes.length ? fmtNum(avgM) : '—', 'layers', '#7c5cd6')}
         ${tile('نسبة الإنجاز', drillProjectValue4(pct, pctM), 'checkCircle', '#16a34a')}
         ${drillProjectValue(closed, left, p, tile)}
         ${tile('الحفارات العاملة في الموقع', `${siteRigs.length}`, 'truck', '#1f3a5f')}
@@ -319,21 +316,11 @@ window.SES_PAGES['drilling'] = function (S) {
       left !== null && left < 0 && !closed ? '#dc2626' : '#f59e0b',
     );
   }
-  /* nextNo من viewDrillProject (يأخذ holes من الصفحة) */
-  function drillProjectNextNo(holes) {
-    const last = holes
-      .map((h) => h.no)
-      .filter((n) => /\d+$/.test(n))
-      .sort((a, b) => Number(a.match(/\d+$/)[0]) - Number(b.match(/\d+$/)[0]))
-      .pop();
-    if (!last) return 'BH-01';
-    const m = last.match(/^(.*?)(\d+)$/);
-    return `${m[1]}${String(Number(m[2]) + 1).padStart(m[2].length, '0')}`;
-  }
   /* جزء من viewDrillProject: const reload = () => viewDrillProject(id);… */
   function viewDrillProjectPart6(crew, ed, holes, id, main, p, pageState, rigs, sumM) {
     const reload = () => viewDrillProject(id);
-    /* مصروفات المشروع: جداول بنودها وإجمالي كل بند وإجمالي المشروع */
+    const amt = (k) => (r) => window.SADEN_DRILL.rowAmount(k, r);
+    /* مصروفات المشروع: جداول بنودها وإجمالي كل بند وإجمالي المشروع (مبلغ السطر من js/drill-calc.js) */
     const EXP = [
       [
         'housing',
@@ -344,7 +331,7 @@ window.SES_PAGES['drilling'] = function (S) {
           { key: 'people', label: 'مين في السكن' },
           { key: 'monthly', label: 'تكلفة الشهر', type: 'number' },
         ],
-        (r) => (Number(r.monthly) || 0) * (Number(r.months) || 1),
+        amt('housing'),
       ],
       [
         'water',
@@ -356,7 +343,7 @@ window.SES_PAGES['drilling'] = function (S) {
           { key: 'truckCost', label: 'تكلفة الوايت', type: 'number' },
           { key: 'count', label: 'عدد الوايتات', type: 'number' },
         ],
-        (r) => (Number(r.truckCost) || 0) * (Number(r.count) || 0),
+        amt('water'),
       ],
       [
         'guards',
@@ -366,7 +353,7 @@ window.SES_PAGES['drilling'] = function (S) {
           { key: 'name', label: 'الغفير / جهة الحراسة' },
           { key: 'monthly', label: 'تكلفة الشهر', type: 'number' },
         ],
-        (r) => (Number(r.monthly) || 0) * (Number(r.months) || 1),
+        amt('guards'),
       ],
       [
         'transport',
@@ -376,7 +363,7 @@ window.SES_PAGES['drilling'] = function (S) {
           { key: 'date', label: 'التاريخ', type: 'date' },
           { key: 'amount', label: 'المبلغ', type: 'number' },
         ],
-        (r) => Number(r.amount) || 0,
+        amt('transport'),
       ],
       [
         'other',
@@ -386,7 +373,7 @@ window.SES_PAGES['drilling'] = function (S) {
           { key: 'date', label: 'التاريخ', type: 'date' },
           { key: 'amount', label: 'المبلغ', type: 'number' },
         ],
-        (r) => Number(r.amount) || 0,
+        amt('other'),
       ],
     ];
     return viewDrillProjectPart5(EXP, crew, ed, holes, id, main, p, pageState, reload, rigs, sumM);

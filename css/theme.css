@@ -1,0 +1,219 @@
+/* ================= الثيم الرسمي الموحد (قرار الإدارة 2026-11) =================
+   شكل واحد للنظام كله بدل «حديث / الأصلي»: أيقونات خطية بلون النص بلا مربعات ملونة ولا تدرجات ولا ظلال.
+   يُفعَّل بالصنف ap-formal على <html> (apStyleApply في public/js/app/hr-org.js)، ويُحمَّل بعد style.css.
+   الألوان من المتغيرات (--text، --brand، --surface-2) فيعمل في الوضع العادي والداكن. */
+
+/* المربع حول الأيقونة: بلا خلفية ولا ظل ولا أشكال زخرفية */
+html.ap-formal .ap-g,
+html.ap-formal .ap-t.grp .ap-g {
+  width: 56px;
+  height: 56px;
+  background: transparent;
+  border: 0;
+  border-radius: 12px;
+  box-shadow: none;
+  overflow: visible;
+}
+html.ap-formal .ap-g .ap-x,
+html.ap-formal .ap-g .ap-y {
+  display: none;
+}
+html.ap-formal .ap-g .i {
+  width: 32px;
+  height: 32px;
+  color: var(--text);
+  stroke-width: 1.6;
+  filter: none;
+}
+
+/* المرور والضغط: خلفية رمادية خفيفة للعنصر كله، والأيقونة بلون الهوية — بلا قفز ولا ظل */
+html.ap-formal .ap-t {
+  transition: background-color 0.15s;
+}
+html.ap-formal .ap-t:hover,
+html.ap-formal .ap-t:focus-visible {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+html.ap-formal .ap-t:hover .ap-g {
+  transform: none;
+  box-shadow: none;
+}
+html.ap-formal .ap-t:hover .ap-g .i,
+html.ap-formal .ap-t:focus-visible .ap-g .i {
+  color: var(--brand-ic);
+}
+/* أسماء الأيقونات أثقل قليلاً (طلب الإدارة: الخط لا رسم الأيقونة) */
+html.ap-formal .ap-l {
+  font-weight: 600;
+}
+
+/* أيقونة رأس الصفحة وبطاقات إدارة المجموعة: نفس الشكل الخطي */
+html.ap-formal .ph-ic.ap-g {
+  width: 44px;
+  height: 44px;
+}
+html.ap-formal .ph-ic.ap-g .i {
+  width: 28px;
+  height: 28px;
+  color: var(--brand-ic);
+}
+
+/* ================= ألوان النظام الموحدة (2026-11) =================
+   كل لون في الواجهة من عائلة واحدة: عنابي سادن (--brand)، والرمادي، وثلاثة ألوان معنى ثابتة
+   (سليم --ok، تنبيه --warn، خطر --bad) ومعها أزرق المعلومات (--info) وبرقوقي «معلّق / قيد التنفيذ» (--hold).
+   الزخارف الملونة (بنفسجي، تركواز، نيلي، وردي…) أصبحت بلون الهوية. مستثنى عمداً: كروت أسماء الموظفين (.emp-card)،
+   والأعلام، وألوان يختارها المستخدم (ثيم الدردشة، ولون الملاحظة اللاصقة، وألوان مناطق خريطة الفروع). */
+html.ap-formal {
+  /* ألوان الرسوم البيانية: 5 فئات بترتيب ثابت — مفحوصة بأداة dataviz (التمييز وعمى الألوان والتباين) في الوضعين */
+  --s1: #a63c4c;
+  --s2: #3b6aa0;
+  --s3: #b07d1e;
+  --s4: #008c78;
+  --s5: #7a5c9e;
+  --hold: #6b4f8f;
+  /* لون الأيقونات بلون الهوية: العنابي نفسه في الوضع العادي، ودرجة أفتح منه في الداكن (تباين مقروء على الخلفية الكحلي) */
+  --brand-ic: var(--brand);
+  --hold-soft: color-mix(in srgb, var(--hold) 12%, var(--surface));
+}
+html.ap-formal[data-theme='dark'] {
+  --s1: #c25566;
+  --s2: #4c7cb3;
+  --s5: #8a6cae;
+  --hold: #a58cc9;
+  --brand-ic: color-mix(in srgb, var(--brand) 45%, #ffffff);
+}
+
+/* أرقام الإشعارات والبريد والدردشة: لون الهوية (لا أحمر فاقع بجانب العنابي) */
+html.ap-formal .bell-n {
+  background: var(--brand);
+}
+
+/* أيقونات مربعات الإحصاءات: مربع ناعم وأيقونة بلون الهوية أياً كان اللون الذي تضعه الصفحة في --m،
+   ويبقى للون معناه إن كان معنى (منتهٍ/خطر، تنبيه، سليم، محايد) لكن بدرجات النظام */
+html.ap-formal :is(.emp-tile .t-ic, .emp-stat .b-ic, .hr-set .b-ic, .ws-v-head .b-ic) {
+  --m: var(--brand-ic) !important;
+  background: color-mix(in srgb, var(--m) 10%, var(--surface));
+  color: var(--m);
+  border: 1px solid color-mix(in srgb, var(--m) 18%, transparent);
+}
+html.ap-formal
+  :is(.t-ic, .b-ic, .tr-k):is(
+    [style*='--m:#dc2626'],
+    [style*='--m:#ef4444'],
+    [style*='--m:#b91c1c'],
+    [style*='--m:#e0435a'],
+    [style*='--c:#dc2626'],
+    [style*='--c:#b91c1c'],
+    [style*='--c:#e0435a']
+  ) {
+  --m: var(--bad) !important;
+  --c: var(--bad) !important;
+}
+html.ap-formal
+  :is(.t-ic, .b-ic, .tr-k):is(
+    [style*='--m:#d97706'],
+    [style*='--m:#f59e0b'],
+    [style*='--m:#ea580c'],
+    [style*='--m:#b45309'],
+    [style*='--m:#ca8a04'],
+    [style*='--m:#c2410c'],
+    [style*='--m:#f2734d'],
+    [style*='--m:#f5a03a'],
+    [style*='--c:#d97706'],
+    [style*='--c:#f59e0b'],
+    [style*='--c:#b45309']
+  ) {
+  --m: var(--warn) !important;
+  --c: var(--warn) !important;
+}
+html.ap-formal
+  :is(.t-ic, .b-ic, .tr-k):is(
+    [style*='--m:#16a34a'],
+    [style*='--m:#059669'],
+    [style*='--m:#15803d'],
+    [style*='--m:#047857'],
+    [style*='--c:#16a34a'],
+    [style*='--c:#059669'],
+    [style*='--c:#047857']
+  ) {
+  --m: var(--ok) !important;
+  --c: var(--ok) !important;
+}
+html.ap-formal :is(.t-ic, .b-ic, .tr-k):is([style*='--m:#64748b'], [style*='--m:#94a3b8'], [style*='--m:#475569'], [style*='--c:#64748b']) {
+  --m: var(--muted) !important;
+  --c: var(--muted) !important;
+}
+/* الرمز المكتوب داخل المربع (رقم التصنيف، وعلامتا الذكر والأنثى) كان أبيض على المربع الملون */
+html.ap-formal .emp-tile .t-sym,
+html.ap-formal .emp-tile .t-ic {
+  color: var(--m);
+}
+/* بطاقات التدريب وأقسام مكتبة المهن: لون الهوية بدل لون لكل بطاقة */
+html.ap-formal .tr-k {
+  --c: var(--brand-ic);
+}
+html.ap-formal .kn-s {
+  --c: var(--brand-ic) !important;
+}
+
+/* حالة «معلّق / قيد التنفيذ» والعمل الإضافي والمنصب في الهيكل: برقوقي هادئ واحد بدل البنفسجي الصريح */
+html.ap-formal :is(.st-doing, .chip.doc-hold, .dm-c.doc-hold, .att-tag.ot) {
+  background: var(--hold-soft);
+  color: var(--hold);
+}
+html.ap-formal :is(.att-v.ot, .att-h.ot, .doc-tile.hold b, .dt-fc-hold:not(.on), .oc-n.k-pos .oc-p, .tr-s > b) {
+  color: var(--hold);
+}
+html.ap-formal :is(.dc-seg.doc-hold, .dc-dot.doc-hold, .oc-leg i.k-pos, .k-pos .oc-k) {
+  background: var(--hold);
+}
+html.ap-formal .dc-card.dc-hold {
+  border-top-color: var(--hold);
+}
+html.ap-formal .dt-row.dt-hold {
+  border-inline-start-color: var(--hold);
+}
+html.ap-formal .od-n.od-pos {
+  --od: var(--hold);
+}
+html.ap-formal .oc-n.k-pos {
+  --oc-c: var(--hold);
+  border-top-color: var(--hold);
+  background: color-mix(in srgb, var(--hold) 3%, var(--surface));
+}
+html.ap-formal .og-post {
+  border-color: color-mix(in srgb, var(--hold) 35%, var(--border));
+}
+html.ap-formal .tr-hero {
+  background: var(--surface);
+}
+html.ap-formal .dp-bar i {
+  background: var(--ok);
+}
+
+/* أحداث التقويم: ألوان الرسوم الموحدة بدل الأزرق والبنفسجي والوردي الصريح */
+html.ap-formal .cal-ev.off {
+  border-color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 12%, var(--surface));
+}
+html.ap-formal .cal-ev.meet {
+  border-color: var(--s2);
+  background: color-mix(in srgb, var(--s2) 12%, var(--surface));
+}
+html.ap-formal .cal-ev.train {
+  border-color: var(--s5);
+  background: color-mix(in srgb, var(--s5) 12%, var(--surface));
+}
+html.ap-formal .cal-ev.occ {
+  border-color: var(--s1);
+  background: color-mix(in srgb, var(--s1) 12%, var(--surface));
+}
+html.ap-formal .cal-ev.todo {
+  border-color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 12%, var(--surface));
+}
+
+/* شعارات التواصل الاجتماعي في الصفحات: بلون الهوية لا بألوان الشبكات (صفحة الدخول بتصميمها الخاص) */
+html.ap-formal #main .soc-ic {
+  --sc: var(--brand) !important; /* اللون يضعه سطر style في الصفحة */
+}

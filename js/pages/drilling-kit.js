@@ -36,17 +36,16 @@ window.SES_PAGE_KITS['drilling'] = function (S, ctx) {
   /* جزء من viewDrillProject: const ex = p.expenses || {};… */
   function viewDrillProjectPart5(EXP, crew, ed, holes, id, main, p, pageState, reload, rigs, sumM) {
     const ex = p.expenses || {};
-    const expSum = (k) => {
-      const d = EXP.find((x) => x[0] === k);
-      return Math.round((ex[k] || []).reduce((a, r) => a + d[3](r), 0) * 100) / 100;
-    };
-    const expTotal = EXP.reduce((a, [k]) => a + expSum(k), 0);
+    /* الإجماليات من js/drill-calc.js (مختبرة): كلها من مبالغ السطور المقرّبة نفسها فلا يختلف إجمالي المشروع عن مجموع بنوده */
+    const D = window.SADEN_DRILL;
+    const expTotal = D.expTotal(ex);
     /* Excel المصروفات: شهر محدد، أو ورقة لكل شهر مع ورقة ملخص */
     const expRows = () =>
       EXP.flatMap(([k, l, cols, f]) =>
         (ex[k] || []).map((r) => ({
           month: String(r.date || '').slice(0, 7),
           date: r.date || '',
+          kind: k,
           sec: l,
           desc: cols
             .filter((c) => c.type !== 'date' && c.type !== 'number')
@@ -87,8 +86,8 @@ window.SES_PAGE_KITS['drilling'] = function (S, ctx) {
     };
     viewDrillProjectPart4(allX, curM, ed, id, pageState);
     const r2 = (n) => Math.round(n * 100) / 100;
-    const mSum = (m) => r2(allX.filter((x) => x.month === m).reduce((a, x) => a + x.amount, 0));
-    const secSum = (m, l) => r2(allX.filter((x) => (!m || x.month === m) && x.sec === l).reduce((a, x) => a + x.amount, 0));
+    const mSum = (m) => D.sum(allX, { month: m });
+    const secSum = (m, l) => D.sum(allX, { month: m, kind: EXP.find((e) => e[1] === l)[0] });
     const drawTabs = () => {
       $('#expTabs').innerHTML =
         `<a href="#" class="gtab${pageState.sel === 'total' ? ' on' : ''}" data-em="total">${icon('chart')}<span>الإجمالي</span><small>${esc(fmtNum(r2(expTotal)))}</small></a>` +

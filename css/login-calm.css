@@ -1,0 +1,36 @@
+/* شاشة الدخول: ألوان هادئة للخلفية (سماء فاتحة وأبنية بدرجات الأزرق الرمادي والأخضر المائي)، ومربع Cloudflare «أنا إنسان».
+ * تغيّر الألوان فقط فوق أنماط .lg2 في style.css — الوضع الداكن وثيمات المناسبات تبقى كما هي (قواعدها أخص). */
+.login.lg2 {
+  background: linear-gradient(160deg, #f6f9f9 0%, #eaf2f1 50%, #dce9e8 100%);
+}
+.lg2 .lg-scene {
+  --rb: #e2ecec;
+  --rm: #c6d9d8;
+  --rl: #a7c3c3;
+  --rd: #7fa2a5;
+  --rx: #f4f8f8;
+  --rf: #d3e2e1;
+  --cl: #ffffff;
+  background: radial-gradient(ellipse 60% 55% at 32% 42%, #ffffff 0%, rgba(255, 255, 255, 0) 70%),
+    linear-gradient(180deg, #f7fafa 0%, #ecf4f3 50%, #dfeceb 100%);
+}
+.lg2 .lg-wave.w1 {
+  fill: #9fcac6;
+}
+.lg2 .lg-wave.w2 {
+  fill: #d9c9a8;
+}
+.lg2 .lg-wave.w3 {
+  fill: #5f8a8f;
+}
+.lg2 .lg-dots i {
+  background: radial-gradient(circle, #fff 0%, #b9dcd8 60%, transparent 70%);
+}
+/* مربع Cloudflare بعرض البطاقة */
+.lg2 .lg-ts {
+  min-height: 65px;
+  margin: 4px 0 10px;
+}
+.lg2 .lg-ts.shake {
+  animation: lgShake 0.4s;
+}

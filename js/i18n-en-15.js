@@ -1,0 +1,46 @@
+/* قاموس الترجمة إلى الإنجليزية (15): عبارات الواجهة ورسائل الخادم — يملأ window.SES_I18N.en (يُحمَّل قبل i18n-core.js) */
+(function (I) {
+  'use strict';
+  Object.assign(I.D, {
+    '🚚 أسطول السيارات': '🚚 Vehicle fleet',
+    '🚚 التسجيل من الأسطول': '🚚 Register from the fleet',
+    '🚚 المركبة': '🚚 Vehicle',
+    '🚚 مركبة': '🚚 Vehicle',
+    '🚜 الحفارات ({0})': '🚜 Rigs ({0})',
+    '🛠 طلب مساعدة تقنية': '🛠 Request technical help',
+    '🛠 طلبات المساعدة التقنية': '🛠 Technical help requests',
+    '🛠️ إنشاء نموذج جديد': '🛠️ Create new form',
+    '🛠️ صيانة': '🛠️ Maintenance',
+    '🛠️ طلب صيانة': '🛠️ Maintenance request',
+    '🛡 الاشتراك والشهادة': '🛡 Subscription & certificate',
+    '🟡 الأساسي بخلفية صفراء: مختلف عن الأساسي المسجل في ملف الموظف.':
+      '🟡 Basic with a yellow background: differs from the basic recorded in the employee file.',
+    '🤖 مساعد SADEN ERP SYSTEM. أعرفك بالنماذج والصفحات، وأقولك حالة طلباتك، وأدلّك على أي خطوة.':
+      "🤖 The SADEN ERP SYSTEM assistant. I introduce you to forms and pages, tell you your requests' status, and guide you through any step.",
+    '🤝 إعارة': '🤝 Lend',
+    '🧭 الاتجاهات': '🧭 Directions',
+    '🧭 المناطق': '🧭 Regions',
+    '🧮 أداة': '🧮 Tool',
+    '🧮 الأدوات': '🧮 Tools',
+    '🧮 المحاسب': '🧮 Accountant',
+    '🧮 مكافأة نهاية الخدمة': '🧮 End-of-service gratuity',
+    '🧮 مكافأة نهاية الخدمة — {0}': '🧮 End-of-service gratuity — {0}',
+    '🧮 مكافأة نهاية الخدمة:': '🧮 End-of-service gratuity:',
+    '🧳 في إجازة ({0})': '🧳 On leave ({0})',
+    '🧳 موظفون في إجازة': '🧳 Employees on leave',
+    '🧾 الفاتورة:': '🧾 Invoice:',
+    '🧾 عرض': '🧾 View',
+    '🧾 قسائم الرواتب': '🧾 Payslips',
+    '＋ إصدار قرار': '＋ Issue decision',
+    '＋ إضافة': '＋ Add',
+    '＋ إضافة مناسبة': '＋ Add occasion',
+    '＋ إضافة موقع': '＋ Add site',
+    '＋ جزء': '＋ Part',
+    '＋ سجل تجاري': '＋ Commercial registration',
+    '＋ شهر جديد': '＋ New month',
+    '＋ مبنى آخر': '＋ Another building',
+    '＋ منطقة': '＋ Region',
+    'إدارة الفروع': 'Branch Management',
+    'حاسبة المبالغ وأيام عمل موظف': 'Employee amounts & workdays calculator',
+  });
+})(((I) => (I.en = I.en || { D: {}, P: [] }))((window.SES_I18N = window.SES_I18N || {})));

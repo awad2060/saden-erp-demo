@@ -1,174 +1,104 @@
 'use strict';
-/* صفحة «new-request» (viewNew) — منقولة من public/js/app.js كما هي دون تغيير في المنطق.
- * تُحمَّل قبل app.js، وتعمل داخله عند أول استخدام: S فيه أدوات app.js المشتركة (esc، api، icon ...). */
+/* صفحة «رفع طلب جديد» (viewNew) — تصميم 2026-11 لسهولة الوصول:
+ * كل الأقسام ظاهرة تحت بعض (لا تبويبات مخفية)، وكل طلب صف واضح باسمه تحت عنوان مجموعته،
+ * وبحث كبير بعنوان واضح يعرض عدد النتائج، وروابط سريعة لكل قسم، وخطوات الرفع الثلاث أعلى الصفحة.
+ * التنسيق: public/css/new-request.css. تُحمَّل قبل app.js، وتعمل داخله عند أول استخدام: S فيه أدوات app.js المشتركة. */
 window.SES_PAGES = window.SES_PAGES || {};
 window.SES_PAGES['new-request'] = function (S) {
-  const { $, $$, APP_TONES, NF_GROUP, NF_SECTIONS, SF, appHue, enabledForms, esc, icon, normAr, shell, state } = S;
-  function viewNew() {
-    /* رفع طلب جديد بنفس أيقونات التطبيقات: كل الخطابات في صفحة واحدة، عنوان لكل قسم وتحته عنوان لكل مجموعة بلونها
-     * وأيقونتها ثم أيقونات خطاباتها؛ والبحث في كل النماذج، والعرض شبكة أو قائمة (نفس اختيار التطبيقات) */
+  const { $, $$, NF_GROUP, NF_SECTIONS, SF, enabledForms, esc, icon, normAr, shell, state } = S;
+
+  /* الأقسام بمجموعاتها: [{k, l, ic, gs: [[اسم المجموعة، نماذجها]]}] — بترتيب NF_SECTIONS، والمجموعات غير المعروفة في «عام» */
+  function sectionsOf() {
     const groups = {};
-    enabledForms().forEach((f) => {
-      (groups[f.group] = groups[f.group] || []).push(f);
-    });
+    enabledForms().forEach((f) => (groups[f.group] = groups[f.group] || []).push(f));
     const secOf = (g) => (NF_SECTIONS.find(([, , , gs]) => gs.includes(g)) || NF_SECTIONS[NF_SECTIONS.length - 1])[0];
-    const secs = NF_SECTIONS.map(([k, l, ic]) => ({ k, l, ic, gs: Object.keys(groups).filter((g) => secOf(g) === k) })).filter(
-      (s) => s.gs.length,
-    );
+    return NF_SECTIONS.map(([k, l, ic]) => ({
+      k,
+      l,
+      ic,
+      gs: Object.keys(groups)
+        .filter((g) => secOf(g) === k)
+        .map((g) => [g, groups[g]]),
+    })).filter((s) => s.gs.length);
+  }
+  const countOf = (s) => s.gs.reduce((n, [, list]) => n + list.length, 0);
+  const en = () => window.I18N && I18N.lang === 'en';
+  /* نص البحث لكل نموذج: اسمه وعنوان خطابه ومجموعته (وترجمته) */
+  const searchText = (f) =>
+    normAr([f.title, typeof f.letterTitle === 'string' ? f.letterTitle : '', f.group, en() ? I18N.tr(f.title) : ''].join(' '));
+
+  /* صف طلب: أيقونة مجموعته، واسمه، وملاحظة القيمة إن وُجدت، وسهم */
+  const formRow = (f) => {
+    const [ic] = NF_GROUP[f.group] || ['file'];
+    const note = f.needsValue ? '<small>تحدد الإدارة المالية القيمة</small>' : '';
+    return `<li><a class="nr-row" href="#/new/${esc(f.id)}" data-s="${esc(searchText(f))}"><span class="nr-ic" aria-hidden="true">${icon(ic)}</span><span class="nr-t"><b>${esc(f.title)}</b>${note}</span><span class="nr-go" aria-hidden="true">${icon('chevron')}</span></a></li>`;
+  };
+  const groupBlock = ([g, list], sk) => {
+    const id = `nr-${sk}-${normAr(g).replace(/\s+/g, '-')}`;
+    return `<div class="nr-gp"><h3 class="nr-gh" id="${esc(id)}">${esc(g)} <small>(${list.length})</small></h3><ul class="nr-list" aria-labelledby="${esc(id)}">${list.map(formRow).join('')}</ul></div>`;
+  };
+  const sectionBlock = (s) =>
+    `<section class="nr-sec card" id="nr-sec-${esc(s.k)}" aria-labelledby="nr-h-${esc(s.k)}"><h2 class="nr-sh" id="nr-h-${esc(s.k)}">${icon(s.ic)}<span>${esc(s.l)}</span><small>${countOf(s)} طلب</small></h2>${s.gs.map((gp) => groupBlock(gp, s.k)).join('')}</section>`;
+
+  /* رأس الصفحة: العنوان، وخطوات الرفع، والبحث، وروابط الأقسام */
+  function headHtml(secs, builder) {
+    const steps = ['اختر نوع الطلب', 'املأ البيانات وأرفق المستندات', 'أرسل — يصل تلقائياً لأول معتمد'];
+    return `<header class="nr-head">
+      <div class="nr-title"><h1>رفع طلب جديد</h1>${builder ? '<a class="btn" href="#/builder">إنشاء نموذج</a>' : ''}</div>
+      <ol class="nr-steps">${steps.map((t, i) => `<li${i ? '' : ' class="on" aria-current="step"'}><span>${i + 1}</span>${esc(t)}</li>`).join('')}</ol>
+      <div class="nr-search"><label for="nfQ">ابحث عن نوع الطلب</label>
+        <div class="nr-q">${icon('search')}<input class="in" id="nfQ" type="search" autocomplete="off" spellcheck="false" placeholder="مثال: سكن، سلفة، إجازة…" aria-describedby="nfCount"></div>
+        <p class="nr-count" id="nfCount" role="status" aria-live="polite"></p></div>
+      ${secs.length > 1 ? `<nav class="nr-jump" aria-label="أقسام الطلبات">${secs.map((s) => `<a href="#nr-sec-${esc(s.k)}" data-jump="${esc(s.k)}">${icon(s.ic)}${esc(s.l)} <small>${countOf(s)}</small></a>`).join('')}</nav>` : ''}
+    </header>`;
+  }
+
+  function viewNew() {
+    const secs = sectionsOf();
     const main = shell('', '#/new');
     const builder = SF.settingsTabs(state.user).includes('forms');
-    const en = window.I18N && I18N.lang === 'en';
-    viewNewPart3(builder, en, groups, main, secs);
+    const total = secs.reduce((n, s) => n + countOf(s), 0);
+    main.innerHTML = `<div class="nr">${headHtml(secs, builder)}
+      ${secs.length ? `<div id="nfAll">${secs.map(sectionBlock).join('')}</div>` : '<div class="empty">لا توجد نماذج متاحة لك</div>'}
+      <div class="empty" id="nfNone" hidden>لا يوجد طلب بهذا الاسم — جرّب كلمة أقصر، أو تصفح الأقسام</div></div>`;
+    wire(main, total);
   }
-  /* جزء من viewNew: const qOf = (f) =>… */
-  function viewNewPart3(builder, en, groups, main, secs) {
-    const qOf = (f) =>
-      normAr([f.title, typeof f.letterTitle === 'string' ? f.letterTitle : '', f.group, en ? I18N.tr(f.title) : ''].join(' '));
-    const VK = `apps-view:${state.user.id}`;
-    let view = 'grid';
-    try {
-      view = localStorage.getItem(VK) === 'list' ? 'list' : 'grid';
-    } catch {
-      /* تجاهل */
-    }
-    viewNewPart(builder, groups, main, qOf, secs);
-    const q = $('#nfQ', main);
-    /* تابات جوجل بمستويين: القسم ثم مجموعته (يُتذكران في الجلسة)، فتظهر خطابات مجموعة واحدة بلا تمرير طويل؛
-     * والبحث يشمل كل الأقسام ويعرض النتائج بعناوين أقسامها ومجموعاتها */
-    const mem = (k, v) => {
-      try {
-        if (v === undefined) return sessionStorage.getItem(k) || '';
-        sessionStorage.setItem(k, v);
-      } catch {
-        /* تجاهل */
-      }
-      return '';
-    };
-    let tab = mem('nf:tab');
-    if (!secs.some((s) => s.k === tab)) tab = secs.length ? secs[0].k : '';
-    const subOf = (k) => {
-      const s = secs.find((x) => x.k === k);
-      const v = mem(`nf:sub:${k}`);
-      return s && s.gs.includes(v) ? v : s ? s.gs[0] : '';
-    };
-    const wrap = $('.nf-wrap', main);
-    const showTab = () => {
-      const searching = !!q.value.trim();
-      wrap.classList.toggle('searching', searching);
-      $$('#nfTabs .gtab', main).forEach((t) => t.classList.toggle('on', !searching && t.dataset.tab === tab));
-      if (searching) return;
-      const sub = subOf(tab);
-      $$('.nf-sec', main).forEach((s) => {
-        s.hidden = s.dataset.sec !== tab;
-      });
-      $$('.nf-sec[data-sec="' + tab + '"] .nf-subtabs button', main).forEach((b) => b.classList.toggle('on', b.dataset.sub === sub));
-      $$('.nf-sec[data-sec="' + tab + '"] .nf-gp', main).forEach((g) => {
-        g.hidden = g.dataset.g !== sub;
-      });
-    };
-    if ($('#nfTabs', main))
-      $('#nfTabs', main).addEventListener('click', (e) => {
-        const t = e.target.closest('[data-tab]');
-        if (!t) return;
-        e.preventDefault();
-        tab = t.dataset.tab;
-        mem('nf:tab', tab);
-        q.value = '';
-        q.dispatchEvent(new Event('input'));
-      });
-    main.addEventListener('click', (e) => {
-      const b = e.target.closest('[data-sub]');
-      if (!b) return;
-      mem(`nf:sub:${tab}`, b.dataset.sub);
-      showTab();
-    });
-    const setView = (v) => {
-      $$('.nf-grid', main).forEach((g) => g.classList.toggle('list', v === 'list'));
-      $$('[data-vw]', main).forEach((b) => b.classList.toggle('on', b.dataset.vw === v));
-      try {
-        localStorage.setItem(VK, v);
-      } catch {
-        /* تجاهل */
-      }
-    };
-    $$('[data-vw]', main).forEach((b) => {
-      b.onclick = () => setView(b.dataset.vw);
-    });
-    setView(view);
-    /* البحث في كل النماذج: كل كلمة لازم تظهر في اسم النموذج أو مجموعته، وتختفي المجموعات والأقسام الفارغة */
-    viewNewPart2(main, q, showTab);
-  }
-  /* جزء من viewNew: q.addEventListener('input', () => {… */
-  function viewNewPart2(main, q, showTab) {
-    q.addEventListener('input', () => {
+
+  /* البحث (كل كلمة لازم تظهر في اسم الطلب أو مجموعته) وإخفاء المجموعات والأقسام الفارغة، وEnter يفتح أول نتيجة */
+  function wire(main, total) {
+    const q = $('#nfQ', main),
+      count = $('#nfCount', main);
+    const filter = () => {
       const words = normAr(q.value).split(' ').filter(Boolean);
       let shown = 0;
-      $$('.ap-t', main).forEach((a) => {
+      $$('.nr-row', main).forEach((a) => {
         const ok = words.every((w) => a.dataset.s.includes(w));
-        a.hidden = !ok;
+        a.parentElement.hidden = !ok;
         if (ok) shown++;
       });
-      $$('.nf-gp', main).forEach((g) => {
-        g.hidden = !$$('.ap-t', g).some((a) => !a.hidden);
-      });
-      $$('.nf-sec', main).forEach((s) => {
-        s.hidden = !$$('.nf-gp', s).some((g) => !g.hidden);
-      });
+      $$('.nr-gp', main).forEach((g) => (g.hidden = !$$('li', g).some((li) => !li.hidden)));
+      $$('.nr-sec', main).forEach((s) => (s.hidden = !$$('.nr-gp', s).some((g) => !g.hidden)));
       $('#nfNone', main).hidden = !words.length || shown > 0;
-      showTab();
-    });
-    showTab();
-    /* Enter: يفتح أول نتيجة */
-    q.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && q.value.trim()) {
-        const first = $$('#nfAll .ap-t', main).find((a) => !a.hidden);
-        if (first) location.hash = first.getAttribute('href');
-      }
-    });
-    q.focus();
-  }
-  /* جزء من viewNew: let n = 0;… */
-  function viewNewPart(builder, groups, main, qOf, secs) {
-    let n = 0;
-    const formTile = (f) => {
-      const [a, c, d] = APP_TONES[n++ % APP_TONES.length],
-        [ic] = NF_GROUP[f.group] || ['file'];
-      return `<a class="ap-t" href="#/new/${f.id}" data-s="${esc(qOf(f))}" title="${esc(f.title)}"><span class="ap-g" style="--a:${a};--b:${c};--c:${d};--m:${appHue(f.id)}"><i class="ap-x"></i><i class="ap-y"></i>${icon(ic)}</span><span class="ap-l">${esc(f.title)}${f.needsValue ? '<small class="ap-d">تحديد القيمة من الإدارة المالية</small>' : ''}</span></a>`;
+      count.textContent = words.length ? `${shown} نتيجة من ${total} طلب` : `${total} طلب متاح — اكتب للبحث أو اختر من الأقسام`;
     };
-    const sections = secs
-      .map(
-        (
-          s,
-        ) => `<section class="nf-sec" data-sec="${s.k}"><h2 class="nf-sh">${icon(s.ic)}${esc(s.l)}<small>${s.gs.reduce((k, g) => k + groups[g].length, 0)} نموذج</small></h2>
-      ${
-        s.gs.length > 1
-          ? `<div class="nf-subtabs">${s.gs
-              .map((g) => {
-                const [gic, gc] = NF_GROUP[g] || ['file', '#64748b'];
-                return `<button type="button" data-sub="${esc(g)}" style="--gc:${gc}">${icon(gic)}<span>${esc(g)}</span><small>${groups[g].length}</small></button>`;
-              })
-              .join('')}</div>`
-          : ''
-      }
-      ${s.gs
-        .map((g) => {
-          const [gic, gc] = NF_GROUP[g] || ['file', '#64748b'];
-          return `<div class="nf-gp" data-g="${esc(g)}" style="--gc:${gc}"><h3 class="nf-gh"><span>${icon(gic)}</span>${esc(g)}<small>${groups[g].length}</small></h3><div class="ap-grid nf-grid">${groups[g].map(formTile).join('')}</div></div>`;
-        })
-        .join('')}</section>`,
-      )
-      .join('');
-    renderViewNew(builder, groups, main, secs, sections);
-  }
-  /* محتوى viewNew (HTML) */
-  function renderViewNew(builder, groups, main, secs, sections) {
-    main.innerHTML = `<div class="ap-wrap nf-wrap"><div class="ap-head"><div><h1>رفع طلب جديد</h1><div class="muted">اختر نوع الخطاب ثم املأ النموذج، وسيُرسل تلقائياً إلى أول معتمد في مسار الاعتماد</div></div>
-        <div class="ap-tools"><input class="in ap-q" id="nfQ" type="search" placeholder="ابحث عن نوع الطلب... مثال: سكن، سلفة" autocomplete="off">
-          <span class="ap-vw"><button type="button" data-vw="grid" title="عرض شبكة">${icon('grid')}</button><button type="button" data-vw="list" title="عرض قائمة تحت بعض">${icon('list')}</button></span>
-          ${builder ? '<a class="btn" href="#/builder">🛠️ إنشاء نموذج</a>' : ''}</div></div>
-      ${secs.length > 1 ? `<div class="gtabs nf-tabs" id="nfTabs">${secs.map((s) => `<a href="#" class="gtab" data-tab="${s.k}">${icon(s.ic)}<span>${esc(s.l)}</span><small>${s.gs.reduce((k, g) => k + groups[g].length, 0)}</small></a>`).join('')}</div>` : ''}
-      ${secs.length ? `<div id="nfAll">${sections}</div>` : '<div class="empty">لا توجد نماذج متاحة</div>'}
-      <div class="empty" id="nfNone" hidden>لا يوجد نموذج يطابق البحث</div><span class="muted" id="nfCount"></span></div>`;
+    q.addEventListener('input', filter);
+    q.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' || !q.value.trim()) return;
+      const first = $$('.nr-row', main).find((a) => !a.parentElement.hidden);
+      if (first) location.hash = first.getAttribute('href');
+    });
+    /* روابط الأقسام: تمرير للقسم وتركيز عنوانه (لا تغيّر رابط الصفحة) */
+    $$('[data-jump]', main).forEach((a) => {
+      a.onclick = (e) => {
+        e.preventDefault();
+        const h = $(`#nr-h-${a.dataset.jump}`, main);
+        h.setAttribute('tabindex', '-1');
+        h.scrollIntoView({ block: 'start' });
+        h.focus({ preventScroll: true });
+      };
+    });
+    filter();
+    q.focus();
   }
 
   return { viewNew };

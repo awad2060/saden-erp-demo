@@ -1,0 +1,270 @@
+/* ================= صفحة «رفع طلب جديد» (public/js/pages/new-request.js) — تصميم 2026-11 =================
+   الهدف: من يدخل لا يتوه — خطوات واضحة، وبحث كبير، وكل الأقسام ظاهرة، وكل طلب صف مقروء باسمه.
+   مساحات الضغط 48px على الأقل، والتركيز بلوحة المفاتيح من a11y.css. */
+
+.nr {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ---------- الرأس: العنوان والخطوات والبحث وروابط الأقسام ---------- */
+.nr-head {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch; /* قاعدة عامة لـ header في style.css تجعلها flex-start فتضيق خانة البحث */
+  gap: 16px;
+}
+.nr-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.nr-title h1 {
+  margin: 0;
+  font-size: 26px;
+  text-wrap: balance;
+}
+
+/* الخطوات الثلاث: الأولى (اختيار النوع) هي الحالية في هذه الصفحة */
+.nr-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.nr-steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+.nr-steps li span {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.nr-steps li.on {
+  border-color: var(--brand);
+  color: var(--text);
+  font-weight: 600;
+}
+.nr-steps li.on span {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+/* البحث: عنوان ظاهر (لا placeholder فقط)، وخانة كبيرة، وعدد النتائج يُقرأ لقارئ الشاشة */
+.nr-search label {
+  display: block;
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+.nr-q {
+  position: relative;
+}
+.nr-q > .i {
+  position: absolute;
+  inset-inline-start: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.nr-q input {
+  width: 100%;
+  min-height: 52px;
+  font-size: 17px;
+  padding-inline-start: 44px;
+  border-radius: 10px;
+}
+.nr-count {
+  margin: 6px 2px 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* روابط الأقسام */
+.nr-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.nr-jump a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+}
+/* الألوان مثل صفحة التطبيقات (theme.css): الأيقونة بلون النص، والمرور خلفية رمادية خفيفة والأيقونة بلون الهوية */
+.nr-jump a:hover {
+  background: color-mix(in srgb, var(--text) 6%, var(--surface));
+}
+.nr-jump a .i {
+  width: 18px;
+  height: 18px;
+  color: var(--text);
+}
+.nr-jump a:hover .i {
+  color: var(--brand-ic, var(--brand));
+}
+.nr-jump small {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/* ---------- الأقسام والمجموعات ---------- */
+.nr-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.nr-sec[hidden],
+.nr-gp[hidden],
+.nr-list li[hidden] {
+  display: none;
+}
+.nr-sh {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 19px;
+  scroll-margin-top: 130px; /* لا يختفي تحت الشريط العلوي الثابت عند القفز إليه */
+}
+.nr-sh .i {
+  width: 22px;
+  height: 22px;
+  color: var(--text);
+}
+.nr-sh small {
+  margin-inline-start: auto;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.nr-gh {
+  margin: 0 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 700;
+}
+.nr-gh small {
+  font-weight: 400;
+}
+
+/* ---------- صفوف الطلبات ---------- */
+.nr-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+}
+.nr-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s;
+}
+.nr-row:hover {
+  background: color-mix(in srgb, var(--text) 6%, var(--surface));
+}
+.nr-row:hover .nr-ic {
+  color: var(--brand-ic, var(--brand));
+}
+.nr-ic {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  transition: color 0.15s;
+}
+.nr-ic .i {
+  width: 24px;
+  height: 24px;
+  stroke-width: 1.6;
+}
+.nr-t {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nr-t b {
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.nr-t small {
+  font-size: 12px;
+  color: var(--muted);
+}
+.nr-go {
+  flex: none;
+  color: var(--muted);
+}
+.nr-go .i {
+  width: 18px;
+  height: 18px;
+  transform: rotate(90deg); /* أيقونة chevron تشير لأسفل: تُدار لتشير لاتجاه الدخول (يسار في العربية) */
+}
+[dir='ltr'] .nr-go .i {
+  transform: rotate(-90deg);
+}
+
+/* الجوال: الخطوات تحت بعض */
+@media (max-width: 700px) {
+  .nr-steps {
+    grid-template-columns: 1fr;
+  }
+  .nr-title h1 {
+    font-size: 22px;
+  }
+}

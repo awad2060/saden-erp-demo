@@ -81,6 +81,7 @@ window.SES_PAGES['inventory'] = function (S) {
           cols: [INV_NO, ...DEV_COLS.map((c) => ({ ...c, required: false }))],
           template: window.SES_INV.DEV_FILE,
           sample: window.SES_INV.DEV_SAMPLE,
+          guide: window.SES_INV.DEV_GUIDE,
           hint: 'صف لكل جهاز بنفس أعمدة الجدول. يحفظ النظام البيانات كما هي، والأجهزة الجديدة تكون متاحة للاستعارة.',
           save: (rows) => api('POST', '/api/devices/bulk', { rows }),
           done: (r) => {
@@ -445,6 +446,7 @@ window.SES_PAGES['inventory'] = function (S) {
           cols: [INV_NO, ...cols.map((c) => ({ ...c, required: false }))],
           template: window.SES_INV.invFile(tabLabel),
           sample: window.SES_INV.invSample(S, sec, sub),
+          guide: window.SES_INV.invGuide(tabLabel),
           hint: `ترفع البنود في <b>فرع ${esc(branch)} — ${esc(tabLabel)}</b> (لرفع قسم آخر افتح تبويبه أولاً). صف لكل بند بنفس أعمدة البيان: حمّل النموذج وعبّئه في Excel ثم ارفعه، أو الصق الصفوف مباشرة. يحفظ النظام البيانات كما هي في الملف بدون أي تعديل.`,
           save: (rows) => api('POST', '/api/inventory/bulk', { ...place, rows }),
           done: (r) => {

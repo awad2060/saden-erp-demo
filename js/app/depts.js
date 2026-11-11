@@ -35,9 +35,9 @@
   };
   const dashOn = (d, k) => (d.sections || SF.DASH_KEYS).includes(k) && !dashHidden().includes(k);
   const dashOnCount = (d) => SF.DASH_KEYS.filter((k) => dashOn(d, k)).length;
-  function deptsHtml(d, forPrint) {
-    const x = d.depts,
-      n = (v) => fmtNum(Math.round(Number(v) || 0));
+  /* أدوات كروت الإدارات: أرقام، نسب، مؤشر، أشرطة، جدول طلبات، وكارت (رابط «فتح» في الشاشة فقط) */
+  function deptsKit(forPrint) {
+    const n = (v) => fmtNum(Math.round(Number(v) || 0));
     const pct = (a, b) => (b ? `${Math.round((a / b) * 100)}%` : '—');
     const kpi = (v, l, cls) => `<div class="stat dx-s${cls ? ` ${cls}` : ''}"><div class="n">${v}</div><div class="l">${l}</div></div>`;
     const bars = (list, unit) =>
@@ -58,59 +58,25 @@
       cls,
     ) => `<div class="card dx-c ${cls || ''}"><div class="dx-ch"><h3>${title}</h3>${!forPrint && link ? `<a href="${link}" class="dx-go">فتح ←</a>` : ''}</div>
       <div class="dx-ss">${kpis.join('')}</div>${body}</div>`;
-    const hr = x.hr,
-      fin = x.finance,
-      fl = x.fleet,
-      ws = x.workshop,
-      dr = x.drilling,
-      inv = x.inventory,
-      tk = x.tasks,
-      cm = x.comm;
-    const hs = x.hse,
-      gv = x.gov,
-      sp = x.sup,
-      tr = x.train,
-      fu = x.fuel,
-      dc = x.docs,
-      cr = x.crm;
-    const on = (k) => dashOn(d, `d.${k}`) && x[k];
-    if (
-      ![
-        'hr',
-        'finance',
-        'fleet',
-        'workshop',
-        'drilling',
-        'inventory',
-        'tasks',
-        'comm',
-        'hse',
-        'gov',
-        'sup',
-        'train',
-        'fuel',
-        'docs',
-        'crm',
-      ].some(on)
-    )
-      return '';
-    return `<h2 class="dx-title">باقي الشركة — أعمال الإدارات (${esc(dPeriod(d))})${d.branch ? ` · فرع ${esc(d.branch)}` : ''}</h2>
-    <div class="dash-grid">
-      ${
-        !on('hr')
-          ? ''
-          : card(
-              '👥',
-              'الموارد البشرية',
-              '#/employees',
-              [
-                kpi(n(hr.active), 'موظف نشط'),
-                kpi(pct(hr.saudi, hr.active), `نسبة السعودة (${n(hr.saudi)})`),
-                kpi(n(hr.joined), 'التحقوا في الفترة'),
-                kpi(n(hr.iqamaExpired), 'إقامات منتهية', hr.iqamaExpired ? 'bad' : ''),
-                kpi(n(hr.iqamaSoon), 'إقامات تنتهي خلال 30 يوماً', hr.iqamaSoon ? 'warn' : ''),
-              ],
-              `<div class="dx-2"><div><h4>الموظفون حسب الفرع</h4>${bars(hr.byBranch)}</div><div><h4>حسب الجنسية</h4>${bars(hr.byNat)}</div></div>
+    return { n, pct, kpi, bars, reqT, card };
+  }
+  /* كروت الإدارات بترتيب العرض: [المفتاح، الكارت (x = أعمال الإدارات، h = الأدوات)] */
+  const DEPT_CARDS = [
+    [
+      'hr',
+      ({ hr }, { n, pct, kpi, bars, reqT, card }) =>
+        card(
+          '👥',
+          'الموارد البشرية',
+          '#/employees',
+          [
+            kpi(n(hr.active), 'موظف نشط'),
+            kpi(pct(hr.saudi, hr.active), `نسبة السعودة (${n(hr.saudi)})`),
+            kpi(n(hr.joined), 'التحقوا في الفترة'),
+            kpi(n(hr.iqamaExpired), 'إقامات منتهية', hr.iqamaExpired ? 'bad' : ''),
+            kpi(n(hr.iqamaSoon), 'إقامات تنتهي خلال 30 يوماً', hr.iqamaSoon ? 'warn' : ''),
+          ],
+          `<div class="dx-2"><div><h4>الموظفون حسب الفرع</h4>${bars(hr.byBranch)}</div><div><h4>حسب الجنسية</h4>${bars(hr.byNat)}</div></div>
         ${reqT([
           ['التوظيف وطلبات الاحتياج', hr.req.hiring],
           ['قرارات النقل', hr.req.transfers],
@@ -118,271 +84,274 @@
           ['ملفات التصفية', hr.req.settlements, true],
           ['الإقامات والتأشيرات ونقل الكفالة', hr.req.residency],
         ])}`,
-            )
-      }
-      ${
-        !on('finance')
-          ? ''
-          : card(
-              '💰',
-              'المالية والرواتب',
-              '#/all',
-              [
-                kpi(esc(money(fin.all.amount)), 'المبالغ المعتمدة (ريال)'),
-                kpi(n(fin.all.approved), 'خطاب معتمد'),
-                kpi(n(fin.all.pending), 'جارية الآن'),
-                kpi(n(fin.all.overdue), 'متأخرة', fin.all.overdue ? 'bad' : ''),
-              ],
-              reqT(fin.byGroup.map((g) => [esc(g.k), g, true])),
-            )
-      }
-      ${
-        !on('fleet')
-          ? ''
-          : card(
-              '🚚',
-              'إدارة الحركة',
-              '#/fleet',
-              [
-                kpi(n(fl.total), 'مركبة'),
-                kpi(n(fl.docsExpired), 'مركبات بوثائق منتهية', fl.docsExpired ? 'bad' : ''),
-                kpi(n(fl.docsSoon), 'وثائق تنتهي خلال 30 يوماً', fl.docsSoon ? 'warn' : ''),
-                kpi(n(fl.violations), `مخالفة في الفترة (${esc(money(fl.violationsAmount))} ريال)`),
-                kpi(n(fl.vioOpen), 'مخالفات غير مسواة', fl.vioOpen ? 'warn' : ''),
-              ],
-              `<div class="dx-2"><div><h4>حالة المركبات</h4>${bars(fl.byStatus)}</div><div><h4>المخالفات حسب الحالة</h4>${bars(fl.vioByStatus)}</div></div>
+        ),
+    ],
+    [
+      'finance',
+      ({ finance: fin }, { n, kpi, reqT, card }) =>
+        card(
+          '💰',
+          'المالية والرواتب',
+          '#/all',
+          [
+            kpi(esc(money(fin.all.amount)), 'المبالغ المعتمدة (ريال)'),
+            kpi(n(fin.all.approved), 'خطاب معتمد'),
+            kpi(n(fin.all.pending), 'جارية الآن'),
+            kpi(n(fin.all.overdue), 'متأخرة', fin.all.overdue ? 'bad' : ''),
+          ],
+          reqT(fin.byGroup.map((g) => [esc(g.k), g, true])),
+        ),
+    ],
+    [
+      'fleet',
+      ({ fleet: fl }, { n, kpi, bars, reqT, card }) =>
+        card(
+          '🚚',
+          'إدارة الحركة',
+          '#/fleet',
+          [
+            kpi(n(fl.total), 'مركبة'),
+            kpi(n(fl.docsExpired), 'مركبات بوثائق منتهية', fl.docsExpired ? 'bad' : ''),
+            kpi(n(fl.docsSoon), 'وثائق تنتهي خلال 30 يوماً', fl.docsSoon ? 'warn' : ''),
+            kpi(n(fl.violations), `مخالفة في الفترة (${esc(money(fl.violationsAmount))} ريال)`),
+            kpi(n(fl.vioOpen), 'مخالفات غير مسواة', fl.vioOpen ? 'warn' : ''),
+          ],
+          `<div class="dx-2"><div><h4>حالة المركبات</h4>${bars(fl.byStatus)}</div><div><h4>المخالفات حسب الحالة</h4>${bars(fl.vioByStatus)}</div></div>
         ${reqT([
           ['محاضر التسليم والتسلم', fl.req.handovers],
           ['صيانة المركبات', fl.req.maintenance, true],
         ])}`,
-            )
-      }
-      ${
-        !on('workshop')
-          ? ''
-          : card(
-              '🛠',
-              'الورشة (المخازن والتصنيع والخردة)',
-              '#/workshop',
-              [
-                kpi(n(ws.products), 'صنف في المخزن'),
-                kpi(n(ws.issued), `كمية مصروفة (${ws.issueDocs} إذن)`),
-                kpi(n(ws.produced), 'كمية مُصنَّعة'),
-                kpi(esc(money(ws.scrapSales)), 'مبيعات الخردة (ريال)'),
-              ],
-              reqT([
-                ['طلبات التصنيع', ws.req.mfg, true],
-                ['أذونات الصرف', ws.req.stockIssue],
-                ['عروض الأسعار', ws.req.quotes, true],
-                ['بيع وتوريد الخردة', ws.req.scrap, true],
-              ]),
-            )
-      }
-      ${
-        !on('drilling')
-          ? ''
-          : card(
-              '⛏',
-              'قسم الحفر',
-              '#/drilling-projects',
-              [
-                kpi(n(dr.active), `مشروع تحت التنفيذ (من ${dr.projects})`),
-                kpi(n(dr.activeRigs), 'حفارة عاملة'),
-                kpi(`${dr.pct}%`, `إنجاز الأمتار (${n(dr.doneM)} من ${n(dr.plannedM)})`),
-                kpi(n(dr.holes), `جسة في الفترة (${n(dr.metersPeriod)} م)`),
-              ],
-              `<h4>المشروعات الجارية (نسبة الإنجاز)</h4>${
-                dr.top.length
-                  ? hbars(
-                      dr.top.map((pj) => ({ label: pj.name, value: Math.min(100, pj.pct) })),
-                      (v) => `${v}%`,
-                    )
-                  : '<div class="muted">لا توجد مشروعات جارية</div>'
-              }
+        ),
+    ],
+    [
+      'workshop',
+      ({ workshop: ws }, { n, kpi, reqT, card }) =>
+        card(
+          '🛠',
+          'الورشة (المخازن والتصنيع والخردة)',
+          '#/workshop',
+          [
+            kpi(n(ws.products), 'صنف في المخزن'),
+            kpi(n(ws.issued), `كمية مصروفة (${ws.issueDocs} إذن)`),
+            kpi(n(ws.produced), 'كمية مُصنَّعة'),
+            kpi(esc(money(ws.scrapSales)), 'مبيعات الخردة (ريال)'),
+          ],
+          reqT([
+            ['طلبات التصنيع', ws.req.mfg, true],
+            ['أذونات الصرف', ws.req.stockIssue],
+            ['عروض الأسعار', ws.req.quotes, true],
+            ['بيع وتوريد الخردة', ws.req.scrap, true],
+          ]),
+        ),
+    ],
+    [
+      'drilling',
+      ({ drilling: dr }, { n, kpi, reqT, card }) =>
+        card(
+          '⛏',
+          'قسم الحفر',
+          '#/drilling-projects',
+          [
+            kpi(n(dr.active), `مشروع تحت التنفيذ (من ${dr.projects})`),
+            kpi(n(dr.activeRigs), 'حفارة عاملة'),
+            kpi(`${dr.pct}%`, `إنجاز الأمتار (${n(dr.doneM)} من ${n(dr.plannedM)})`),
+            kpi(n(dr.holes), `جسة في الفترة (${n(dr.metersPeriod)} م)`),
+          ],
+          `<h4>المشروعات الجارية (نسبة الإنجاز)</h4>${
+            dr.top.length
+              ? hbars(
+                  dr.top.map((pj) => ({ label: pj.name, value: Math.min(100, pj.pct) })),
+                  (v) => `${v}%`,
+                )
+              : '<div class="muted">لا توجد مشروعات جارية</div>'
+          }
         ${reqT([
           ['المصروفات الثانوية', dr.req.expense, true],
           ['المطالبات المالية', dr.req.claims, true],
           ['إعارة الحفارات', dr.req.rigLoans],
         ])}`,
-            )
-      }
-      ${
-        !on('inventory')
-          ? ''
-          : card(
-              '📋',
-              'إدارة الجرد والأجهزة النوعية',
-              '#/inventory',
-              [
-                kpi(n(inv.items), 'صنف في جرد الفروع'),
-                kpi(n(inv.broken), 'لا يعمل', inv.broken ? 'warn' : ''),
-                kpi(n(inv.loaned), 'معار'),
-                kpi(n(inv.devices), 'جهاز نوعي'),
-              ],
-              `<div class="dx-2"><div><h4>الجرد حسب الفرع</h4>${bars(inv.byBranch)}</div><div><h4>الأجهزة النوعية</h4>${bars(inv.devByState)}</div></div>
+        ),
+    ],
+    [
+      'inventory',
+      ({ inventory: inv }, { n, kpi, bars, reqT, card }) =>
+        card(
+          '📋',
+          'إدارة الجرد والأجهزة النوعية',
+          '#/inventory',
+          [
+            kpi(n(inv.items), 'صنف في جرد الفروع'),
+            kpi(n(inv.broken), 'لا يعمل', inv.broken ? 'warn' : ''),
+            kpi(n(inv.loaned), 'معار'),
+            kpi(n(inv.devices), 'جهاز نوعي'),
+          ],
+          `<div class="dx-2"><div><h4>الجرد حسب الفرع</h4>${bars(inv.byBranch)}</div><div><h4>الأجهزة النوعية</h4>${bars(inv.devByState)}</div></div>
         ${reqT([
           ['استعارة الأجهزة', inv.req.loans],
           ['صيانة الأجهزة', inv.req.maint],
         ])}`,
-            )
-      }
-      ${
-        !on('fuel')
-          ? ''
-          : card(
-              '',
-              'المحروقات',
-              '#/fuel',
-              [
-                kpi(n(fu.amount), 'ريال شامل الضريبة'),
-                kpi(n(fu.liters), 'لتر'),
-                kpi(n(fu.vehicles), 'مركبة'),
-                kpi(`${fu.approved} / ${fu.months}`, 'شهر معتمد / مرفوع'),
-              ],
-              `<h4>المبالغ حسب الفرع (ريال)</h4>${bars(fu.byBranch)}`,
-            )
-      }
-      ${
-        !on('hse')
-          ? ''
-          : card(
-              '',
-              'السلامة والصحة المهنية',
-              '#/hse',
-              [
-                kpi(n(hs.incidents), 'حادث في الفترة', hs.incidents ? 'bad' : ''),
-                kpi(n(hs.open), 'حوادث مفتوحة', hs.open ? 'warn' : ''),
-                kpi(n(hs.permits), 'تصريح عمل سارٍ'),
-                kpi(n(hs.inspections), 'فحص سلامة'),
-                kpi(n(hs.observations), 'ملاحظة سلامة'),
-              ],
-              `<div class="dx-2"><div><h4>الحوادث حسب الخطورة</h4>${bars(hs.bySeverity)}</div><div><h4>الحوادث حسب النوع</h4>${bars(hs.byType)}</div></div>`,
-            )
-      }
-      ${
-        !on('gov')
-          ? ''
-          : card(
-              '',
-              'الحوكمة والامتثال',
-              '#/governance',
-              [
-                kpi(n(gv.risks), 'خطر مفتوح'),
-                kpi(n(gv.highRisks), 'خطر مرتفع', gv.highRisks ? 'bad' : ''),
-                kpi(n(gv.findings), 'ملاحظة تدقيق مفتوحة'),
-                kpi(n(gv.overdue), 'ملاحظة متأخرة', gv.overdue ? 'bad' : ''),
-                kpi(n(gv.coi), 'إقرار تعارض مصالح هذا العام'),
-                kpi(n(gv.reports), 'بلاغ مفتوح'),
-              ],
-              `<h4>المخاطر المفتوحة حسب الفئة</h4>${bars(gv.byCategory)}`,
-            )
-      }
-      ${
-        !on('sup')
-          ? ''
-          : card(
-              '',
-              'المتابعة والإشراف',
-              '#/supervision',
-              [
-                kpi(n(sp.reports), 'تقرير فرع في الفترة'),
-                kpi(n(sp.issues), 'شكوى / مشكلة مفتوحة', sp.issues ? 'warn' : ''),
-                kpi(n(sp.urgent), 'عاجلة', sp.urgent ? 'bad' : ''),
-                kpi(n(sp.moves), 'طلب نقل / انتداب'),
-              ],
-              `<div class="dx-2"><div><h4>المفتوحة حسب الأولوية</h4>${bars(sp.byPriority)}</div><div><h4>المفتوحة حسب الفرع</h4>${bars(sp.byBranch)}</div></div>`,
-            )
-      }
-      ${
-        !on('train')
-          ? ''
-          : card(
-              '',
-              'مركز التدريب',
-              '#/training',
-              [
-                kpi(n(tr.courses), 'دورة في الفترة'),
-                kpi(n(tr.upcoming), 'دورة قادمة'),
-                kpi(n(tr.trainees), 'متدرب'),
-                kpi(n(tr.completed), 'أتموا الدورات'),
-                kpi(n(tr.hours), 'ساعة تدريب'),
-              ],
-              `<h4>المتدربون حسب الدورة</h4>${bars(tr.byCourse)}`,
-            )
-      }
-      ${
-        !on('docs')
-          ? ''
-          : card(
-              '',
-              'الوثائق والمستندات',
-              '#/docs',
-              [
-                kpi(n(dc.total), 'وثيقة لها تاريخ انتهاء'),
-                kpi(n(dc.expired), 'منتهية', dc.expired ? 'bad' : ''),
-                kpi(n(dc.soon), 'تنتهي خلال 30 يوماً', dc.soon ? 'warn' : ''),
-              ],
-              `<h4>المنتهية والقريبة حسب النوع</h4>${bars(dc.byType)}`,
-            )
-      }
-      ${
-        !on('crm')
-          ? ''
-          : card(
-              '',
-              'العملاء والقضايا',
-              '#/crm',
-              [
-                kpi(n(cr.customers), 'عميل'),
-                kpi(n(cr.added), 'عميل جديد في الفترة'),
-                kpi(n(cr.cases), 'قضية مفتوحة', cr.cases ? 'warn' : ''),
-              ],
-              cr.byStatus.length ? `<h4>العملاء حسب الحالة</h4>${bars(cr.byStatus)}` : '',
-            )
-      }
-      ${
-        !on('tasks')
-          ? ''
-          : card(
-              '✅',
-              'إدارة المهام',
-              '#/tasks?view=all',
-              [
-                kpi(n(tk.created), 'مهمة وُجّهت في الفترة'),
-                kpi(n(tk.done), 'اكتملت'),
-                kpi(n(tk.open), 'مفتوحة'),
-                kpi(n(tk.late), 'متأخرة', tk.late ? 'bad' : ''),
-                kpi(tk.onTime == null ? '—' : `${tk.onTime}%`, 'اكتملت في موعدها'),
-              ],
-              `<table class="dx-req"><thead><tr><th>المدير</th><th>المهام</th><th>مكتملة</th><th>مفتوحة</th><th>متأخرة</th></tr></thead><tbody>${tk.byManager.map((m) => `<tr><td>${esc(m.k)}</td><td>${m.total}</td><td>${m.done}</td><td>${m.open}</td><td class="${m.late ? 'dx-bad' : ''}">${m.late}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">لا توجد مهام</td></tr>'}</tbody></table>
+        ),
+    ],
+    [
+      'fuel',
+      ({ fuel: fu }, { n, kpi, bars, card }) =>
+        card(
+          '',
+          'المحروقات',
+          '#/fuel',
+          [
+            kpi(n(fu.amount), 'ريال شامل الضريبة'),
+            kpi(n(fu.liters), 'لتر'),
+            kpi(n(fu.vehicles), 'مركبة'),
+            kpi(`${fu.approved} / ${fu.months}`, 'شهر معتمد / مرفوع'),
+          ],
+          `<h4>المبالغ حسب الفرع (ريال)</h4>${bars(fu.byBranch)}`,
+        ),
+    ],
+    [
+      'hse',
+      ({ hse: hs }, { n, kpi, bars, card }) =>
+        card(
+          '',
+          'السلامة والصحة المهنية',
+          '#/hse',
+          [
+            kpi(n(hs.incidents), 'حادث في الفترة', hs.incidents ? 'bad' : ''),
+            kpi(n(hs.open), 'حوادث مفتوحة', hs.open ? 'warn' : ''),
+            kpi(n(hs.permits), 'تصريح عمل سارٍ'),
+            kpi(n(hs.inspections), 'فحص سلامة'),
+            kpi(n(hs.observations), 'ملاحظة سلامة'),
+          ],
+          `<div class="dx-2"><div><h4>الحوادث حسب الخطورة</h4>${bars(hs.bySeverity)}</div><div><h4>الحوادث حسب النوع</h4>${bars(hs.byType)}</div></div>`,
+        ),
+    ],
+    [
+      'gov',
+      ({ gov: gv }, { n, kpi, bars, card }) =>
+        card(
+          '',
+          'الحوكمة والامتثال',
+          '#/governance',
+          [
+            kpi(n(gv.risks), 'خطر مفتوح'),
+            kpi(n(gv.highRisks), 'خطر مرتفع', gv.highRisks ? 'bad' : ''),
+            kpi(n(gv.findings), 'ملاحظة تدقيق مفتوحة'),
+            kpi(n(gv.overdue), 'ملاحظة متأخرة', gv.overdue ? 'bad' : ''),
+            kpi(n(gv.coi), 'إقرار تعارض مصالح هذا العام'),
+            kpi(n(gv.reports), 'بلاغ مفتوح'),
+          ],
+          `<h4>المخاطر المفتوحة حسب الفئة</h4>${bars(gv.byCategory)}`,
+        ),
+    ],
+    [
+      'sup',
+      ({ sup: sp }, { n, kpi, bars, card }) =>
+        card(
+          '',
+          'إدارة الفروع',
+          '#/supervision',
+          [
+            kpi(n(sp.reports), 'تقرير فرع في الفترة'),
+            kpi(n(sp.issues), 'شكوى / مشكلة مفتوحة', sp.issues ? 'warn' : ''),
+            kpi(n(sp.urgent), 'عاجلة', sp.urgent ? 'bad' : ''),
+            kpi(n(sp.moves), 'طلب نقل / انتداب'),
+          ],
+          `<div class="dx-2"><div><h4>المفتوحة حسب الأولوية</h4>${bars(sp.byPriority)}</div><div><h4>المفتوحة حسب الفرع</h4>${bars(sp.byBranch)}</div></div>`,
+        ),
+    ],
+    [
+      'train',
+      ({ train: tr }, { n, kpi, bars, card }) =>
+        card(
+          '',
+          'مركز التدريب',
+          '#/training',
+          [
+            kpi(n(tr.courses), 'دورة في الفترة'),
+            kpi(n(tr.upcoming), 'دورة قادمة'),
+            kpi(n(tr.trainees), 'متدرب'),
+            kpi(n(tr.completed), 'أتموا الدورات'),
+            kpi(n(tr.hours), 'ساعة تدريب'),
+          ],
+          `<h4>المتدربون حسب الدورة</h4>${bars(tr.byCourse)}`,
+        ),
+    ],
+    [
+      'docs',
+      ({ docs: dc }, { n, kpi, bars, card }) =>
+        card(
+          '',
+          'الوثائق والمستندات',
+          '#/docs',
+          [
+            kpi(n(dc.total), 'وثيقة لها تاريخ انتهاء'),
+            kpi(n(dc.expired), 'منتهية', dc.expired ? 'bad' : ''),
+            kpi(n(dc.soon), 'تنتهي خلال 30 يوماً', dc.soon ? 'warn' : ''),
+          ],
+          `<h4>المنتهية والقريبة حسب النوع</h4>${bars(dc.byType)}`,
+        ),
+    ],
+    [
+      'crm',
+      ({ crm: cr }, { n, kpi, bars, card }) =>
+        card(
+          '',
+          'العملاء والقضايا',
+          '#/crm',
+          [kpi(n(cr.customers), 'عميل'), kpi(n(cr.added), 'عميل جديد في الفترة'), kpi(n(cr.cases), 'قضية مفتوحة', cr.cases ? 'warn' : '')],
+          cr.byStatus.length ? `<h4>العملاء حسب الحالة</h4>${bars(cr.byStatus)}` : '',
+        ),
+    ],
+    [
+      'tasks',
+      ({ tasks: tk }, { n, kpi, card }) =>
+        card(
+          '✅',
+          'إدارة المهام',
+          '#/tasks?view=all',
+          [
+            kpi(n(tk.created), 'مهمة وُجّهت في الفترة'),
+            kpi(n(tk.done), 'اكتملت'),
+            kpi(n(tk.open), 'مفتوحة'),
+            kpi(n(tk.late), 'متأخرة', tk.late ? 'bad' : ''),
+            kpi(tk.onTime == null ? '—' : `${tk.onTime}%`, 'اكتملت في موعدها'),
+          ],
+          `<table class="dx-req"><thead><tr><th>المدير</th><th>المهام</th><th>مكتملة</th><th>مفتوحة</th><th>متأخرة</th></tr></thead><tbody>${tk.byManager.map((m) => `<tr><td>${esc(m.k)}</td><td>${m.total}</td><td>${m.done}</td><td>${m.open}</td><td class="${m.late ? 'dx-bad' : ''}">${m.late}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">لا توجد مهام</td></tr>'}</tbody></table>
         ${tk.avgDays != null ? `<div class="hint">متوسط مدة إنجاز المهمة: ${esc(daysTxt(tk.avgDays))}${tk.review ? ` · ${tk.review} بانتظار اعتماد المدير` : ''}</div>` : ''}`,
-            )
-      }
-      ${
-        !on('comm')
-          ? ''
-          : card(
-              '💬',
-              'التواصل والنشاط على النظام',
-              '#/mail',
-              [
-                kpi(n(cm.logins), 'مرة دخول في الفترة'),
-                kpi(`${n(cm.activeUsers)} / ${n(cm.users)}`, 'مستخدم نشط / إجمالي'),
-                kpi(n(cm.mails), 'رسالة بريد داخلي'),
-                kpi(n(cm.notices), `تعميم${cm.noticeRead != null ? ` (قُرئ ${cm.noticeRead}%)` : ''}`),
-              ],
-              x.legal.req.created || x.legal.req.pending ? reqT([['الشئون القانونية', x.legal.req, true]]) : '',
-            )
-      }
+        ),
+    ],
+    [
+      'comm',
+      ({ comm: cm, legal }, { n, kpi, reqT, card }) =>
+        card(
+          '💬',
+          'التواصل والنشاط على النظام',
+          '#/mail',
+          [
+            kpi(n(cm.logins), 'مرة دخول في الفترة'),
+            kpi(`${n(cm.activeUsers)} / ${n(cm.users)}`, 'مستخدم نشط / إجمالي'),
+            kpi(n(cm.mails), 'رسالة بريد داخلي'),
+            kpi(n(cm.notices), `تعميم${cm.noticeRead != null ? ` (قُرئ ${cm.noticeRead}%)` : ''}`),
+          ],
+          legal.req.created || legal.req.pending ? reqT([['الشئون القانونية', legal.req, true]]) : '',
+        ),
+    ],
+  ];
+  function deptsHtml(d, forPrint) {
+    const x = d.depts;
+    const on = (k) => dashOn(d, `d.${k}`) && x[k];
+    if (!DEPT_CARDS.some(([k]) => on(k))) return '';
+    const h = deptsKit(forPrint);
+    return `<h2 class="dx-title">باقي الشركة — أعمال الإدارات (${esc(dPeriod(d))})${d.branch ? ` · فرع ${esc(d.branch)}` : ''}</h2>
+    <div class="dash-grid">
+      ${DEPT_CARDS.map(([k, f]) => (!on(k) ? '' : f(x, h))).join('\n      ')}
     </div>`;
   }
-  function dashboardHtml(d, forPrint) {
-    const k = d.kpi;
-    const decided = k.approved + k.rejected;
-    const tbl = (head, rows, empty) =>
-      `<div class="tbl-wrap"><table class="tbl"><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('') || `<tr><td colspan="${head.length}" class="muted">${empty}</td></tr>`}</tbody></table></div>`;
-    const on = (key) => dashOn(d, key);
-    const half = [];
+  /* جدول بسيط: رأس وصفوف، ورسالة إن لم توجد صفوف */
+  const dashTbl = (head, rows, empty) =>
+    `<div class="tbl-wrap"><table class="tbl"><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('') || `<tr><td colspan="${head.length}" class="muted">${empty}</td></tr>`}</tbody></table></div>`;
+  /* كروت النصف الأول: المخططان، والمبالغ حسب الفرع، والخطابات حسب النوع */
+  function dashHalfCharts(d, on, half) {
     if (on('trend'))
       half.push(
         '<div class="card"><h3>المبالغ المعتمدة شهرياً: الفترة المختارة مقارنة بالفترة السابقة</h3><div id="cTrend" class="chart-slot"></div></div>',
@@ -413,9 +382,12 @@
                 )
               : '<div class="muted">لا توجد خطابات معتمدة في هذه الفترة</div>'
           }</div>`);
+  }
+  /* كروت النصف الثاني: أين تتوقف الطلبات، وزمن المراحل، والحالات، وأعلى الموظفين */
+  function dashHalfFlow(d, on, half) {
     if (on('waiting'))
       half.push(`<div class="card"><h3>أين تتوقف الطلبات الآن؟</h3>
-          ${tbl(
+          ${dashTbl(
             ['المرحلة / المعتمد', 'جارية', 'متأخرة', 'أقدم طلب منذ'],
             d.waiting.map(
               (w) =>
@@ -441,7 +413,7 @@
           )}</div>`);
     if (on('people'))
       half.push(`<div class="card"><h3>أعلى الموظفين في المبالغ المعتمدة</h3>
-          ${tbl(
+          ${dashTbl(
             ['الموظف', 'رقم الإقامة', 'خطابات', 'المبلغ (ريال)'],
             d.topPeople.map(
               (p) =>
@@ -449,24 +421,23 @@
             ),
             'لا توجد بيانات',
           )}</div>`);
-    return `
-      ${
-        !on('kpis')
-          ? ''
-          : `<div class="stats kpis">
+  }
+  /* المؤشرات الرئيسية (مع التغير عن الفترة السابقة) */
+  function dashKpis(d) {
+    const k = d.kpi;
+    const decided = k.approved + k.rejected;
+    return `<div class="stats kpis">
         <div class="stat"><div class="n">${k.approved}</div><div class="l">خطاب معتمد في الفترة</div>${delta(k.approved, d.prev.approved)}</div>
         <div class="stat"><div class="n">${esc(money(k.amount))}</div><div class="l">إجمالي المبالغ المعتمدة (ريال)</div>${delta(k.amount, d.prev.amount)}</div>
         <div class="stat"><div class="n">${k.pending}</div><div class="l">طلبات جارية الآن</div>${k.overdue ? `<span class="delta down">⚠ منها ${k.overdue} متأخر</span>` : '<span class="delta">لا يوجد متأخر</span>'}</div>
         <div class="stat"><div class="n">${decided ? `${Math.round((k.approved / decided) * 100)}%` : '—'}</div><div class="l">نسبة الاعتماد من الطلبات المحسومة</div><span class="delta">${k.rejected} مرفوض · ${k.returned} معاد</span></div>
         <div class="stat"><div class="n">${esc(daysTxt(k.avgDays))}</div><div class="l">متوسط مدة الاعتماد الكاملة</div></div>
         <div class="stat"><div class="n">${d.byBranch.filter((b) => b.approved).length}</div><div class="l">فروع لها خطابات معتمدة</div></div>
-      </div>`
-      }
-      ${half.length ? `<div class="dash-grid">${half.join('')}</div>` : ''}
-      ${
-        !on('matrix')
-          ? ''
-          : `
+      </div>`;
+  }
+  /* مصروفات الفروع حسب نوع الخطاب (مصفوفة الفرع × النوع) */
+  function dashMatrix(d) {
+    return `
       <div class="card"><h3>مصروفات الفروع حسب نوع الخطاب (المعتمد نهائياً في الفترة)</h3>
         ${
           d.matrix.rows.length
@@ -486,13 +457,13 @@
           </tbody></table></div>`
             : '<div class="muted">لا توجد خطابات معتمدة في هذه الفترة</div>'
         }
-        <p class="muted" style="font-size:12.5px;margin-bottom:0">المبالغ بالريال حسب الفلاتر أعلاه (الفترة والفرع ونوع الخطاب)، والخطابات بدون مبلغ تظهر بعددها فقط.</p></div>`
-      }
-      ${
-        !on('detail')
-          ? ''
-          : `<div class="card"><h3>تفصيل حسب نوع الخطاب</h3>
-        ${tbl(
+        <p class="muted" style="font-size:12.5px;margin-bottom:0">المبالغ بالريال حسب الفلاتر أعلاه (الفترة والفرع ونوع الخطاب)، والخطابات بدون مبلغ تظهر بعددها فقط.</p></div>`;
+  }
+  /* تفصيل حسب نوع الخطاب (في الطباعة: الأنواع التي لها حركة فقط) */
+  function dashDetail(d, forPrint) {
+    const k = d.kpi;
+    return `<div class="card"><h3>تفصيل حسب نوع الخطاب</h3>
+        ${dashTbl(
           ['نوع الخطاب', 'المجموعة', 'معتمد', 'المبالغ المعتمدة', 'جاري', 'معاد للتعديل', 'مرفوض'],
           [
             ...d.byType
@@ -505,8 +476,18 @@
           ],
           '',
         )}
-        <p class="muted" style="font-size:12.5px;margin-bottom:0">المعتمد والمبالغ بتاريخ الاعتماد النهائي، والمرفوض والمعاد بتاريخ رفع الطلب، والجاري هو الوضع الحالي. التأخر بأيام العمل بدون العطلات.</p></div>`
-      }
+        <p class="muted" style="font-size:12.5px;margin-bottom:0">المعتمد والمبالغ بتاريخ الاعتماد النهائي، والمرفوض والمعاد بتاريخ رفع الطلب، والجاري هو الوضع الحالي. التأخر بأيام العمل بدون العطلات.</p></div>`;
+  }
+  function dashboardHtml(d, forPrint) {
+    const on = (key) => dashOn(d, key);
+    const half = [];
+    dashHalfCharts(d, on, half);
+    dashHalfFlow(d, on, half);
+    return `
+      ${!on('kpis') ? '' : dashKpis(d)}
+      ${half.length ? `<div class="dash-grid">${half.join('')}</div>` : ''}
+      ${!on('matrix') ? '' : dashMatrix(d)}
+      ${!on('detail') ? '' : dashDetail(d, forPrint)}
       ${d.depts ? deptsHtml(d, forPrint) : ''}
       ${dashOnCount(d) ? '' : '<div class="card empty">لا توجد أقسام ظاهرة في لوحتك — اضغط "⚙ تخصيص العرض" لإظهار ما تحتاجه، أو اطلب من مدير النظام إتاحة أقسام لك</div>'}`;
   }
@@ -546,10 +527,16 @@
         }),
       );
   }
-  /* أعمال الإدارات في ملف Excel */
+  /* أعمال الإدارات في ملف Excel: صف طلبات (r)، ورأس جدول الطلبات (H) */
+  const csvReq = (label, q) => [label, q.created, q.approved, q.amount, q.pending, q.overdue];
+  const CSV_H = ['الطلبات', 'جديد في الفترة', 'معتمد', 'المبالغ المعتمدة', 'جاري', 'متأخر'];
   function deptsCsv(x) {
-    const r = (label, q) => [label, q.created, q.approved, q.amount, q.pending, q.overdue];
-    const H = ['الطلبات', 'جديد في الفترة', 'معتمد', 'المبالغ المعتمدة', 'جاري', 'متأخر'];
+    return [...deptsCsvPeople(x), ...deptsCsvOps(x)];
+  }
+  /* الموارد البشرية والمالية والحركة والورشة */
+  function deptsCsvPeople(x) {
+    const r = csvReq,
+      H = CSV_H;
     return [
       [],
       ['أعمال الإدارات'],
@@ -597,6 +584,13 @@
       r('أذونات الصرف', x.workshop.req.stockIssue),
       r('عروض الأسعار', x.workshop.req.quotes),
       r('الخردة', x.workshop.req.scrap),
+    ];
+  }
+  /* الحفر والجرد والمهام والتواصل والشئون القانونية */
+  function deptsCsvOps(x) {
+    const r = csvReq,
+      H = CSV_H;
+    return [
       [],
       ['قسم الحفر'],
       ['مشروعات', x.drilling.projects],

@@ -245,6 +245,8 @@ window.SES_PAGES['login'] = function (S) {
     /* «لست روبوت»: رمز موقّع من الخادم يُرسل مع الدخول، ويُستهلك بعد محاولة واحدة */
     vs.capToken = '';
     vs.capTimer = 0;
+    /* Cloudflare Turnstile إن ضُبط مفتاحه على الخادم، وإلا التحقق المحلي (للشبكة الداخلية بلا إنترنت) */
+    if (state.config.turnstileSiteKey) return wireLf($('#lgTs'), turnstileWidget(vs), polV, vs);
     const cap = $('#lgCap'),
       capBtn = $('#lgCapBtn');
     const capSet = (st) => {
@@ -271,6 +273,62 @@ window.SES_PAGES['login'] = function (S) {
       }
     };
     return wireLf(cap, capReset, polV, vs);
+  }
+  /* Cloudflare Turnstile: يظهر دائماً، والرمز يُرسل مع الدخول ويتحقق منه الخادم لدى Cloudflare مرة واحدة */
+  function turnstileWidget(vs) {
+    const box = $('#lgTs');
+    let id = null;
+    const draw = () => {
+      if (!document.body.contains(box)) return;
+      id = window.turnstile.render(box, {
+        sitekey: state.config.turnstileSiteKey,
+        action: 'login',
+        language: window.I18N && I18N.lang === 'en' ? 'en' : 'ar',
+        theme: document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light',
+        size: 'flexible',
+        callback: (t) => {
+          vs.capToken = t;
+          if ($('#lerr')) $('#lerr').innerHTML = '';
+        },
+        'expired-callback': () => {
+          vs.capToken = '';
+        },
+        'error-callback': () => {
+          vs.capToken = '';
+        },
+      });
+    };
+    loadTurnstile().then(draw, () => {
+      if ($('#lerr')) $('#lerr').innerHTML = '<div class="err">تعذّر تحميل التحقق من Cloudflare — تأكد من اتصال الإنترنت</div>';
+    });
+    return () => {
+      vs.capToken = '';
+      if (id !== null && window.turnstile) window.turnstile.reset(id);
+    };
+  }
+  /* سكربت Cloudflare يُحمَّل مرة واحدة عند أول عرض لشاشة الدخول */
+  function loadTurnstile() {
+    if (window.turnstile) return Promise.resolve();
+    if (!S.tsLoading)
+      S.tsLoading = new Promise((ok, no) => {
+        const s = document.createElement('script');
+        s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+        s.async = true;
+        s.onload = ok;
+        s.onerror = () => {
+          S.tsLoading = null;
+          s.remove();
+          no();
+        };
+        document.head.appendChild(s);
+      });
+    return S.tsLoading;
+  }
+  /* «لست روبوت»: مربع Cloudflare دائماً، أو المربع المحلي (يظهر بعد محاولة خاطئة) */
+  function captchaHtml(capOn) {
+    if (state.config.turnstileSiteKey) return '<div class="lg-ts" id="lgTs"></div>';
+    return `<div class="lg-cap" id="lgCap" data-state="off"${capOn ? '' : ' hidden'}><button type="button" class="lg-cap-box" id="lgCapBtn" role="checkbox" aria-checked="false" aria-label="أنا لست روبوتاً"><span class="lg-spin" aria-hidden="true"></span><svg class="lg-tick" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg></button>
+        <span class="lg-cap-t">أنا لست روبوتاً</span><span class="lg-cap-s" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z"/><path d="M8.5 12l2.5 2.5 4.5-5" stroke-linecap="round"/></svg><small>دخول آمن</small></span></div>`;
   }
   /* أحداث viewLogin: #lf */
   function wireLf(cap, capReset, polV, vs) {
@@ -418,14 +476,15 @@ window.SES_PAGES['login'] = function (S) {
       <div class="field"><label for="lgP">كلمة المرور</label><div class="lg-in"><span class="lg-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span><input class="in" id="lgP" type="password" name="password" autocomplete="current-password" required dir="ltr"><button type="button" class="lg-eye" id="lgEye" aria-label="إظهار كلمة المرور" title="إظهار كلمة المرور"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div><div class="lg-caps" id="lgCaps" hidden>⇪ زر الحروف الكبيرة (Caps Lock) مفعّل</div></div>
       <div class="lg-row"><label class="lg-chk"><input type="checkbox" name="remember"${last ? ' checked' : ''}> تذكرني</label><a href="#" data-acc="reset">نسيت كلمة المرور؟</a></div>
       <label class="lg-agree"><input type="checkbox" id="lgAgree" name="agree"${agreed ? ' checked' : ''}><span>أوافق على <a href="#" id="lgPol">سياسة الاستخدام</a> و<a href="/privacy.html" target="_blank" rel="noopener">سياسة الخصوصية</a></span></label>
-      <div class="lg-cap" id="lgCap" data-state="off"${capOn ? '' : ' hidden'}><button type="button" class="lg-cap-box" id="lgCapBtn" role="checkbox" aria-checked="false" aria-label="أنا لست روبوتاً"><span class="lg-spin" aria-hidden="true"></span><svg class="lg-tick" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg></button>
-        <span class="lg-cap-t">أنا لست روبوتاً</span><span class="lg-cap-s" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z"/><path d="M8.5 12l2.5 2.5 4.5-5" stroke-linecap="round"/></svg><small>دخول آمن</small></span></div>
+      ${captchaHtml(capOn)}
       <div id="lerr" role="alert"></div>
       <button class="btn primary lg-go">دخول</button>
       <div class="login-links"><span>ليس لديك حساب؟</span><a href="#" data-acc="account">طلب إنشاء حساب</a></div>
       ${soc ? `<div class="lg-social"><span>تابعنا</span><div>${soc}</div></div>` : ''}
       ${stores}
-      <button type="button" class="btn ghost lang-login" data-lang>${window.I18N && I18N.lang === 'en' ? 'العربية' : 'English'}</button>
+      <select class="in lang-login" data-langsel aria-label="اللغة / Language / زبان" data-noi18n>${Object.entries(I18N.LANGS)
+        .map(([k, L]) => `<option value="${k}" lang="${k}"${I18N.lang === k ? ' selected' : ''}>${L.name}</option>`)
+        .join('')}</select>
       <div class="login-ver">SADEN ERP · الإصدار <bdi dir="ltr">${esc(state.config.version || '1.0.0')}</bdi> · © ${new Date().getFullYear()} مجموعة سادن</div>
     </form>
     <div class="lg-hero">${occ ? `<div class="occ-title"><b>${esc(occ.title)}</b><small>${esc(occ.sub)}</small></div>` : ''}${sc.hub}</div></div>`;
@@ -447,8 +506,8 @@ window.SES_PAGES['login'] = function (S) {
   }
   /* أحداث viewLogin: #lgPol */
   function wireLogin() {
-    $$('[data-lang]').forEach((b) => {
-      b.onclick = () => I18N.set(I18N.lang === 'en' ? 'ar' : 'en');
+    $$('[data-langsel]').forEach((s) => {
+      s.onchange = () => I18N.set(s.value);
     });
     $$('[data-acc]').forEach((a) => {
       a.onclick = (e) => {

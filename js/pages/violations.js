@@ -163,6 +163,7 @@ window.SES_PAGES['violations'] = function (S) {
           cols: VIOL_COLS,
           template: window.SES_FLEET.violationsFile(),
           sample: window.SES_FLEET.VIOL_SAMPLE,
+          guide: window.SES_FLEET.VIOL_GUIDE,
           hint: 'صف لكل مخالفة: الصق من Excel (Ctrl+V في أول خانة) أو ارفع ملف Excel بنفس عناوين القالب. رقم اللوحة يجب أن يكون مسجلاً في أسطول السيارات. يحدد النظام السائق المتسبب تلقائياً من محضر التسليم الساري يوم المخالفة، ويحيل كل مخالفة لمحاسب فرعها بإشعار.',
           save: (rows) => api('POST', '/api/violations/bulk', { rows }),
           done: (r) => {

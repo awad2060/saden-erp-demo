@@ -274,7 +274,7 @@ window.SES_PAGE_KITS['employee-file'] = function (S, ctx) {
       .cv-hd{display:flex;gap:14px;align-items:center;border-bottom:3px solid #9b1c1c;padding-bottom:12px;margin-bottom:10px} .cv-hd img,.cv-hd .emp-av{width:84px;height:84px;border-radius:12px;object-fit:cover}
       h2{margin:0;font-size:22px} .cv-t{color:#9b1c1c;font-weight:700;margin-top:4px} .muted{color:#64748b} .cv-s{margin-top:12px;break-inside:avoid} .cv-s h4{margin:0 0 6px;font-size:15px;color:#9b1c1c;border-bottom:1px solid #e2e8f0;padding-bottom:4px}
       .cv-g{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 14px} .cv-r small{display:block;color:#64748b;font-size:11.5px} .cv-i{margin:6px 0} .ft{margin-top:18px;text-align:center;color:#94a3b8;font-size:11px}</style></head>
-      <body>${empCvHtml(e).replace(/src="\//g, `src="${location.origin}${location.pathname.replace(/[^/]*$/, '')}`)}<div class="ft">SES - SADEN ERP SYSTEM</div><script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>`);
+      <body>${empCvHtml(e).replace(/src="\//g, `src="${location.origin}/`)}<div class="ft">SES - SADEN ERP SYSTEM</div><script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>`);
     w.document.close();
   }
   return { viewEmployeePrint, bindEmpAcc, empCvHtml, empRowModal, printEmpCv };

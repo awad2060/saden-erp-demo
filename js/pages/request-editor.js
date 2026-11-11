@@ -5,6 +5,8 @@ window.SES_PAGES = window.SES_PAGES || {};
 window.SES_PAGES['request-editor'] = function (S) {
   /* خصائص أنواع الطلبات (public/js/form-traits.js): isForm(r, 'خاصية') بدل مقارنة النوع */
   const isForm = (r, trait) => window.SADEN_FORM_TRAITS.is(r, trait);
+  /* نماذج يتغير مسارها مع مدخلاتها (الفرع، الجهة، المعتمد...) فتُعاد معاينة المسار عند تغييرها */
+  const LIVE_ROUTE = ['drillFlow', 'issueFlow', 'scrapFlow', 'supplyFlow', 'flow', 'pickApprover', 'pickApprovers', 'lastDayFlow'];
   const {
     $,
     $$,
@@ -73,7 +75,7 @@ window.SES_PAGES['request-editor'] = function (S) {
       return;
     }
     /* المسار حسب الفرع أو الجهة المختارة (قسم الحفر وأذون الصرف والخردة) */
-    const RK = ['branch', 'toBranch', 'lender', 'workshop', 'reqKind', 'hasCar', 'approverId', 'approverIds'];
+    const RK = ['branch', 'toBranch', 'lender', 'workshop', 'reqKind', 'hasCar', 'approverId', 'approverIds', 'approverKind', 'iqama'];
     /* قائمة المستخدمين لحقل "يُوجَّه لاعتماد" */
     if (vs.form.fields.some((f) => f.picker === 'user' || f.type === 'users'))
       state.pickUsers = await api('GET', '/api/mail/users?approvers=1').catch(() => []);
@@ -186,15 +188,7 @@ window.SES_PAGES['request-editor'] = function (S) {
     };
     /* طلب صيانة جهاز: تنبيه تحت اختيار الجهاز إذا تكرر عطله في فترة قريبة */
     viewEditorPart7(ef, vs.form, render);
-    if (
-      vs.form.drillFlow ||
-      vs.form.issueFlow ||
-      vs.form.scrapFlow ||
-      vs.form.supplyFlow ||
-      vs.form.flow ||
-      vs.form.pickApprover ||
-      vs.form.pickApprovers
-    )
+    if (LIVE_ROUTE.some((k) => vs.form[k]))
       ef.addEventListener('change', async (e) => {
         if (!RK.includes((e.target.closest('[data-key]') || {}).dataset?.key)) return;
         try {

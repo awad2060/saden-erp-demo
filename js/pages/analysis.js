@@ -322,7 +322,7 @@ window.SES_PAGES['analysis'] = function (S) {
     };
     const one = ({ T, v }, i) => {
       const pl = T.problem === true ? 'المشكلة' : T.problem || '';
-      return `<section class="pg${i ? ' br' : ''}"><div class="hd"><img src="${location.origin}${location.pathname.replace(/[^/]*$/, '')}logo.png" alt=""><div><h1>${items.length > 1 ? `${i + 1}. ` : ''}${esc(T.n)}</h1><div class="en">${esc(T.en)}</div></div></div>
+      return `<section class="pg${i ? ' br' : ''}"><div class="hd"><img src="${location.origin}/logo.png" alt=""><div><h1>${items.length > 1 ? `${i + 1}. ` : ''}${esc(T.n)}</h1><div class="en">${esc(T.en)}</div></div></div>
         <div class="mt">${v._subject ? `<span><b>الموضوع:</b> ${esc(v._subject)}</span>` : ''}<span><b>إعداد:</b> ${esc(v._by || state.user.name)}</span>${v._date ? `<span><b>التاريخ:</b> ${esc(SF.fmtDate(v._date))}</span>` : ''}</div>
         ${pl && v._problem ? `<div class="pb"><b>${pl}:</b> ${esc(v._problem)}</div>` : ''}
         <div class="g" style="grid-template-columns:repeat(${Math.min(T.cols, 3)},1fr)">${T.secs.map(([k, l, , c]) => `<div class="s" style="--c:${c}"><h3>${esc(l)}</h3>${pts(v[k])}</div>`).join('')}</div>

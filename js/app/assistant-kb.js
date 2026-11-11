@@ -105,11 +105,11 @@
     <g class="af-stars"><g class="af-orbit"><text x="120" y="70">★</text><text x="330" y="80">★</text><text x="230" y="20">✦</text><text x="60" y="140">✦</text></g></g>
     <g class="af-spark"><text x="40" y="60">✦</text><text x="330" y="50">✨</text><text x="20" y="180">✦</text></g>
   </svg>`;
-  /* المهندس ثلاثي الأبعاد: تحميل المكتبة مرة واحدة عند الحاجة */
+  /* الروبوت ثلاثي الأبعاد: تحميل المكتبة وملفات الروبوت مرة واحدة عند الحاجة (بالترتيب) */
   let asLib = null;
   const asLoad3d = () =>
     asLib ||
-    (asLib = ['vendor/three.min.js', 'js/robot3d.js'].reduce(
+    (asLib = ['vendor/three.min.js', 'js/robot3d-build.js', 'js/robot3d-moves.js', 'js/robot3d.js'].reduce(
       (p, src) =>
         p.then(
           () =>
@@ -216,6 +216,10 @@
   function asKnowledge() {
     const s = state.stats || {},
       u = state.user || {};
+    return [...asKnowledge1({ s, u }), ...asKnowledge2({ s, u }), ...asKnowledge3({ s, u })];
+  }
+  /* asKnowledge (1/3) */
+  function asKnowledge1({ s, u }) {
     return [
       {
         k: ['السلام عليكم', 'مرحبا', 'اهلا', 'هاي', 'صباح', 'مساء'],
@@ -285,6 +289,11 @@
         a: () => 'ارفع صورة توقيعك من "حسابي" ← التوقيع الإلكتروني، ليظهر على الخطابات عند اعتمادك.',
         links: [asLink('#/account', 'حسابي')],
       },
+    ];
+  }
+  /* asKnowledge (2/3) */
+  function asKnowledge2({ s, u }) {
+    return [
       {
         k: ['طباعه', 'اطبع', 'pdf', 'بي دي اف'],
         a: () => 'افتح الطلب واضغط "🖨️ طباعة / PDF"، ثم اختر الطابعة أو "حفظ كـ PDF" من نافذة الطباعة.',
@@ -354,6 +363,11 @@
         a: () => 'الورشة: المخزون والتصنيع والخردة، وطلبات الصيانة، وطلب تصنيع / شراء من الورشة، وعروض الأسعار.',
         links: [asLink('#/new/mfgRequest', 'طلب تصنيع / شراء من الورشة'), asLink('#/new/priceQuote', 'عرض سعر')],
       },
+    ];
+  }
+  /* asKnowledge (3/3) */
+  function asKnowledge3({ s, u }) {
+    return [
       {
         k: ['دليل', 'شرح', 'كيف استخدم', 'تعليمات'],
         a: () => 'دليل الاستخدام فيه شرح كامل للنظام، ويمكنك سؤالي هنا عن أي شيء.',

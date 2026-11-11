@@ -37,7 +37,7 @@
       if (u.pathname === '/api/logout') return Promise.resolve(jsonRes(200, {}));
       return Promise.resolve(jsonRes(403, { error: MSG }));
     }
-    /* ملفات الواجهة بمسار مطلق (/img/...) ← مكان النسخة */
+    /* ملفات الواجهة بمسار مطلق (img/...) ← مكان النسخة */
     if (!u.pathname.startsWith(BASE)) return realFetch(BASE + u.pathname.replace(/^\//, '') + u.search, init);
     return realFetch(input, init);
   };

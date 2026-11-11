@@ -307,6 +307,7 @@ window.SES_PAGE_KITS['settings'] = function (S, ctx) {
     const kb = (n) => (n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.ceil(n / 1024)} KB`);
     body.innerHTML = `<div class="card"><h3>النسخ الاحتياطي</h3>
       <p class="muted" style="margin-top:0">ينشئ النظام نسخة تلقائية كل يوم. النسخة تحتوي الطلبات والمستخدمين والإعدادات، أما المرفقات وصور التوقيعات فتنسخها مع مجلد البيانات على السيرفر.</p>
+      <p class="muted" style="margin-top:0">🔒 تُشفَّر النسخ إذا عُرّف مفتاح BACKUP_KEY على الخادم. احتفظ بالمفتاح خارج الخادم: بدونه لا تُسترجع النسخ المشفرة.</p>
       <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:14px"><button class="btn primary" id="bkNow">➕ إنشاء نسخة الآن</button>
         <label class="btn" style="cursor:pointer">⬆ رفع نسخة من جهازك<input type="file" id="bkUp" accept=".json" hidden></label></div>
       <div class="tbl-wrap"><table class="tbl"><thead><tr><th>النسخة</th><th>التاريخ</th><th>الحجم</th><th></th></tr></thead><tbody>
@@ -315,7 +316,7 @@ window.SES_PAGE_KITS['settings'] = function (S, ctx) {
           .map(
             (
               b,
-            ) => `<tr><td dir="ltr" style="text-align:right">${esc(b.name)}</td><td class="num">${esc(dt(b.at))}</td><td class="num">${kb(b.size)}</td>
+            ) => `<tr><td><span dir="ltr">${esc(b.name)}</span> ${b.enc ? '<span class="chip ok">🔒 مشفرة</span>' : '<span class="chip">غير مشفرة</span>'}</td><td class="num">${esc(dt(b.at))}</td><td class="num">${kb(b.size)}</td>
         <td><a class="btn sm" href="/api/admin/backups/${encodeURIComponent(b.name)}" download="${esc(b.name)}">⬇ تنزيل</a> ${isAdmin() ? `<button class="btn sm bad" data-restore="${esc(b.name)}">↺ استرجاع</button>` : ''}</td></tr>`,
           )
           .join('') || '<tr><td colspan="4" class="muted">لا توجد نسخ</td></tr>'
@@ -534,224 +535,12 @@ window.SES_PAGE_KITS['settings'] = function (S, ctx) {
     apply();
   }
 
-  /* ---------- المسميات والصلاحيات ---------- */
-  function settingsRoles(body, s, users, saveSettings) {
-    let list = (s.roles || []).map((r) => JSON.parse(JSON.stringify(r)));
-    const capsTxt = (r) =>
-      r.base === 'admin'
-        ? 'كل الصلاحيات'
-        : SF.CAPS.filter(([k]) => r.caps && r.caps[k])
-            .map(([, l]) => l)
-            .join('، ') || 'الاعتيادية حسب نوع الحساب';
-    const draw = () => {
-      body.innerHTML = `<div class="card"><h3>المسميات والصلاحيات</h3>
-        <p class="muted" style="margin-top:0">لكل مسمى: نوع الحساب الأساسي، والصفحات التي يراها، والإجراءات المسموحة، والخطابات المتاحة. تسند المسمى لكل مستخدم من نافذته في "المستخدمون". وما تخصصه لفئة أو لمستخدم بعينه يتقدم على إعداد المسمى.</p>
-        ${list
-          .map(
-            (r, i) => `<div class="role-row">
-          <input class="in" data-rn="${i}" value="${esc(r.name)}">
-          <select class="in" data-rb="${i}">${SF.BASES.map(([k, l]) => `<option value="${k}"${r.base === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
-          <small class="muted">${users.filter((u) => u.roleId === r.id).length} مستخدم</small>
-          <button type="button" class="btn sm" data-rperm="${i}">الصلاحيات${Object.keys(r.pages || {}).length || Object.keys(r.caps || {}).length || Array.isArray(r.allowedForms) || r.viewScope || Array.isArray(r.viewForms) || Array.isArray(r.dashSections) ? ' ✓' : ''}</button>
-          <button type="button" class="btn sm bad" data-rdel="${i}">حذف</button>
-          <div class="role-caps muted">الإجراءات: ${esc(capsTxt(r))}</div>
-        </div>`,
-          )
-          .join('')}
-        <div class="row" style="gap:8px;margin-top:12px"><input class="in" id="newRole" placeholder="اسم المسمى الجديد (مثال: محاسب حماية الأجور)" style="flex:1"><button type="button" class="btn" id="addRole">➕ إضافة مسمى</button></div>
-        <div class="ferr"></div>
-        <div class="row save-bar"><button class="btn primary" id="saveRoles">💾 حفظ</button></div></div>`;
-      const sync = () => {
-        $$('[data-rn]', body).forEach((e) => {
-          list[e.dataset.rn].name = e.value;
-        });
-        $$('[data-rb]', body).forEach((e) => {
-          list[e.dataset.rb].base = e.value;
-        });
-      };
-      $('#addRole').onclick = () => {
-        sync();
-        const v = $('#newRole').value.trim();
-        if (v) {
-          list.push({ id: '', name: v, base: 'approver' });
-          draw();
-        }
-      };
-      $$('[data-rdel]', body).forEach((b) => {
-        b.onclick = () => {
-          sync();
-          const r = list[b.dataset.rdel];
-          if (users.some((u) => u.roleId === r.id)) {
-            toast('لا يمكن حذف مسمى مُسند لمستخدمين، غيّر مسماهم أولاً', true);
-            return;
-          }
-          list.splice(b.dataset.rdel, 1);
-          draw();
-        };
-      });
-      $$('[data-rperm]', body).forEach((b) => {
-        b.onclick = () => {
-          sync();
-          rolePermsModal(list[b.dataset.rperm], draw);
-        };
-      });
-      $('#saveRoles').onclick = async () => {
-        sync();
-        try {
-          await saveSettings({ roles: list }, 'تم حفظ المسميات');
-          viewSettings('roles');
-        } catch (err) {
-          $('.ferr', body).innerHTML = `<div class="err">${esc(err.message)}</div>`;
-        }
-      };
-    };
-    draw();
-  }
-
-  /* صلاحيات المسمى: الصفحات والإجراءات "حسب نوع الحساب / نعم / لا"، والخطابات المتاحة */
-  async function rolePermsModal(role, done) {
-    const tools = isAdmin() ? await api('GET', '/api/admin/tools') : [];
-    const pageList = [...SF.PAGES, ...tools.map((t) => [`tool:${t.file}`, `النماذج والأدوات ← ${t.title}`])];
-    const pages = role.pages || {},
-      caps = role.caps || {};
-    const restricted = Array.isArray(role.allowedForms);
-    const tri = (attr, k, v, dis) =>
-      `<select class="in tri" ${attr}="${esc(k)}"${dis ? ' disabled' : ''}><option value="">حسب نوع الحساب</option><option value="1"${v === true ? ' selected' : ''}>نعم</option><option value="0"${v === false ? ' selected' : ''}>لا</option></select>`;
-    const isAdm = role.base === 'admin';
-    const bg = document.createElement('div');
-    bg.className = 'modal-bg';
-    renderRolePermsModal(bg, caps, isAdm, pageList, pages, restricted, role, tri);
-    document.body.appendChild(bg);
-    $('[data-x]', bg).onclick = () => bg.remove();
-    /* قائمة "الطلبات التي يراها" تظهر مع "يرى طلبات فرعه" و"كل الطلبات" */
-    $('#rScope', bg).onchange = () => {
-      const v = $('#rScope', bg).value;
-      $('#rViewBox', bg).hidden = !['all', 'branch'].includes(v);
-      $('#rViewT', bg).textContent = v === 'all' ? 'الطلبات التي يراها' : 'الطلبات التي يراها من فرعه';
-    };
-    $$('input[name="rvm"]', bg).forEach((x) => {
-      x.onchange = () => {
-        $('#rViewList', bg).hidden = $('input[name="rvm"]:checked', bg).value !== 'some';
-      };
-    });
-    $$('[data-vall]', bg).forEach((b) => {
-      b.onclick = () =>
-        $$('[data-rv]', bg).forEach((c) => {
-          c.checked = b.dataset.vall === '1';
-        });
-    });
-    $$('input[name="rdm"]', bg).forEach((x) => {
-      x.onchange = () => {
-        $('#rDashList', bg).hidden = $('input[name="rdm"]:checked', bg).value !== 'some';
-      };
-    });
-    navTreeWire($('#rNavTree', bg), (r) => $('select', r).value !== '0');
-    $('[data-ok]', bg).onclick = () => {
-      role.caps = Object.fromEntries(
-        $$('[data-rc]', bg)
-          .filter((x) => x.value !== '')
-          .map((x) => [x.dataset.rc, x.value === '1']),
-      );
-      role.pages = Object.fromEntries(
-        $$('[data-rp]', bg)
-          .filter((x) => x.value !== '')
-          .map((x) => [x.dataset.rp, x.value === '1']),
-      );
-      role.allowedForms =
-        $('input[name="rfm"]:checked', bg).value === 'some'
-          ? $$('[data-rf]', bg)
-              .filter((c) => c.checked)
-              .map((c) => c.dataset.rf)
-          : null;
-      role.viewScope = $('#rScope', bg).value || undefined;
-      role.dashSections =
-        $('input[name="rdm"]:checked', bg).value === 'some'
-          ? $$('[data-rds]', bg)
-              .filter((c) => c.checked)
-              .map((c) => c.dataset.rds)
-          : null;
-      role.viewForms =
-        ['all', 'branch'].includes(role.viewScope) && $('input[name="rvm"]:checked', bg).value === 'some'
-          ? $$('[data-rv]', bg)
-              .filter((c) => c.checked)
-              .map((c) => c.dataset.rv)
-          : null;
-      bg.remove();
-      done();
-    };
-  }
-  /* محتوى rolePermsModal (HTML) */
-  function renderRolePermsModal(bg, caps, isAdm, pageList, pages, restricted, role, tri) {
-    bg.innerHTML = `<div class="modal" style="max-width:820px"><h3>صلاحيات: ${esc(role.name)}</h3>
-      ${isAdm ? '<div class="need-att">نوع الحساب "مدير نظام": له كل الإجراءات والصفحات دائماً.</div>' : ''}
-      <div class="perm-cols">
-        <div><b>الإجراءات</b>
-          ${SF.CAPS.map(([k, l]) => `<div class="row tri-row"><span>${esc(l)}</span>${tri('data-rc', k, caps[k], isAdm)}</div>`).join('')}
-          <b style="display:block;margin-top:12px">الصفحات</b>
-          ${pageList.map(([k, l]) => `<div class="row tri-row"><span>${esc(l)}</span>${tri('data-rp', k, pages[k], isAdm)}</div>`).join('')}
-          <b style="display:block;margin-top:12px">أيقونات التطبيقات وما تحتها</b>
-          <div class="hint" style="margin:2px 0 6px">اختر «لا» لإخفاء الأيقونة أو جزء منها عن هذا المسمى. الأيقونة تظهر فقط إذا كانت صلاحياته تسمح بها أصلاً.</div>
-          <div class="nav-tree" id="rNavTree">${navTree((k, l, ic, d, g) => `<div class="row tri-row nt-r${g ? ' nt-h' : ''}" style="--d:${d}"><span><span class="nt-ic">${ic}</span> ${esc(l)}</span><select class="in tri" data-rp="${esc(k)}"${isAdm ? ' disabled' : ''}><option value="">ظاهرة</option><option value="0"${pages[k] === false ? ' selected' : ''}>لا</option></select></div>`)}</div>
-        </div>
-        <div><b>نطاق عرض الطلبات</b>
-          <select class="in" id="rScope"${isAdm ? ' disabled' : ''}>
-            <option value="">حسب "يرى جميع الطلبات"</option>
-            <option value="all"${role.viewScope === 'all' ? ' selected' : ''}>كل الطلبات</option>
-            <option value="branch"${role.viewScope === 'branch' ? ' selected' : ''}>يرى طلبات فرعه</option>
-            <option value="route"${role.viewScope === 'route' ? ' selected' : ''}>يرى ما عليه فقط (المارة عليه للاعتماد)</option>
-          </select>
-          <div class="hint" style="margin-bottom:12px">ما يرفعه المستخدم أو يمر عليه للاعتماد يظهر له دائماً.</div>
-          <div id="rViewBox" class="perm-view"${['all', 'branch'].includes(role.viewScope) ? '' : ' hidden'}>
-            <b id="rViewT">${role.viewScope === 'all' ? 'الطلبات التي يراها' : 'الطلبات التي يراها من فرعه'}</b>
-            <label class="check"><input type="radio" name="rvm" value="same"${Array.isArray(role.viewForms) ? '' : ' checked'}> نفس الخطابات المتاحة له (أسفل)</label>
-            <label class="check"><input type="radio" name="rvm" value="some"${Array.isArray(role.viewForms) ? ' checked' : ''}> أنواع محددة فقط:</label>
-            <div id="rViewList"${Array.isArray(role.viewForms) ? '' : ' hidden'}>
-              <div class="row" style="gap:6px;margin:4px 0"><button type="button" class="btn sm" data-vall="1">تحديد الكل</button><button type="button" class="btn sm ghost" data-vall="0">إلغاء الكل</button></div>
-              ${SF.GROUPS.map((g) => {
-                const fs = SF.FORMS.filter((f) => f.group === g && !f.autoOnly);
-                return fs.length
-                  ? `<div class="perm-g">${esc(g)}</div>${fs.map((f) => `<label class="check"><input type="checkbox" data-rv="${f.id}"${!Array.isArray(role.viewForms) || role.viewForms.includes(f.id) ? ' checked' : ''}> ${esc(f.title)}</label>`).join('')}`
-                  : '';
-              }).join('')}
-            </div>
-          </div>
-          <b>أقسام لوحة المؤشرات</b>
-          <label class="check"><input type="radio" name="rdm" value="all"${Array.isArray(role.dashSections) ? '' : ' checked'}> كل الأقسام</label>
-          <label class="check"><input type="radio" name="rdm" value="some"${Array.isArray(role.dashSections) ? ' checked' : ''}> المحددة فقط:</label>
-          <div id="rDashList" class="perm-view"${Array.isArray(role.dashSections) ? '' : ' hidden'}>${[
-            ...new Set(SF.DASH_SECTIONS.map((s) => s[2])),
-          ]
-            .map(
-              (g) =>
-                `<div class="perm-g">${esc(g)}</div>${SF.DASH_SECTIONS.filter((s) => s[2] === g)
-                  .map(
-                    ([k, l]) =>
-                      `<label class="check"><input type="checkbox" data-rds="${k}"${!Array.isArray(role.dashSections) || role.dashSections.includes(k) ? ' checked' : ''}> ${esc(l)}</label>`,
-                  )
-                  .join('')}`,
-            )
-            .join('')}</div>
-          <b>الخطابات المتاحة (للرفع والاطلاع)</b>
-          <label class="check"><input type="radio" name="rfm" value="all"${restricted ? '' : ' checked'}> كل الخطابات</label>
-          <label class="check"><input type="radio" name="rfm" value="some"${restricted ? ' checked' : ''}> المحددة فقط:</label>
-          ${SF.GROUPS.map((g) => {
-            const fs = SF.FORMS.filter((f) => f.group === g);
-            return fs.length
-              ? `<div class="perm-g">${esc(g)}</div>${fs.map((f) => `<label class="check"><input type="checkbox" data-rf="${f.id}"${!restricted || role.allowedForms.includes(f.id) ? ' checked' : ''}> ${esc(f.title)}</label>`).join('')}`
-              : '';
-          }).join('')}
-        </div>
-      </div>
-      <div class="row" style="margin-top:16px"><button type="button" class="btn primary" data-ok>تم</button><button type="button" class="btn ghost" data-x>إلغاء</button></div>
-      <div class="hint">يحفظ النظام التغييرات عند الضغط على "حفظ" في صفحة المسميات.</div></div>`;
-  }
   return {
     settingsTools,
     settingsActivity,
     settingsOversight,
     settingsBackup,
     settingsEmail,
-    settingsRoles,
     settingsCalendar,
     settingsHrPart,
     renderSettingsHr,
